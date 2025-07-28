@@ -90,18 +90,18 @@ locals {
   ami_id = var.custom_ami_id != null ? var.custom_ami_id : (
     var.operating_system == "linux" ? data.aws_ami.linux[0].id : data.aws_ami.windows[0].id
   )
-  
+
   # Determine subnet to use
   subnet_id = var.subnet_id != null ? var.subnet_id : data.aws_subnets.default[0].ids[0]
-  
+
   # Determine if public IP should be associated
   associate_public_ip = var.associate_public_ip_address != null ? var.associate_public_ip_address : (
     var.private_subnet ? false : true
   )
-  
+
   # Security group name
   security_group_name = var.security_group_name != null ? var.security_group_name : "${var.instance_name}-sg"
-  
+
   # KMS key to use
   kms_key_id = var.enable_ebs_encryption ? (
     var.kms_key_id != null ? var.kms_key_id : aws_kms_key.ebs[0].arn
@@ -181,9 +181,9 @@ resource "aws_instance" "this" {
     volume_type           = var.volume_type
     volume_size           = var.volume_size
     encrypted             = var.enable_ebs_encryption
-    kms_key_id           = local.kms_key_id
+    kms_key_id            = local.kms_key_id
     delete_on_termination = true
-    
+
     tags = merge(
       {
         Name = "${var.instance_name}-root-volume"
@@ -194,7 +194,7 @@ resource "aws_instance" "this" {
 
   tags = merge(
     {
-      Name = var.instance_name
+      Name            = var.instance_name
       OperatingSystem = var.operating_system
     },
     var.tags
@@ -439,7 +439,7 @@ resource "aws_ssm_association" "configure_agent" {
   parameters = {
     action                        = "configure"
     mode                          = "ec2"
-    optionalConfigurationSource  = "ssm"
+    optionalConfigurationSource   = "ssm"
     optionalConfigurationLocation = var.operating_system == "linux" ? aws_ssm_parameter.cloudwatch_agent_config_linux[0].name : aws_ssm_parameter.cloudwatch_agent_config_windows[0].name
   }
 

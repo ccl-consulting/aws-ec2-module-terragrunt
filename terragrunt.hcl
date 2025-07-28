@@ -11,22 +11,22 @@ terraform {
 
 inputs = {
   # Instance Details
-  instance_name     = "example-instance"
-  instance_type     = "t3.micro"
-  operating_system  = "linux" # change to "windows" if needed
+  instance_name    = "example-instance"
+  instance_type    = "t3.micro"
+  operating_system = "linux" # change to "windows" if needed
 
   # AWS Configuration
-  aws_region        = "us-east-1"
-  assume_role_arn   = "arn:aws:iam::123456789012:role/TerraformRole" # CHANGE THIS
+  aws_region      = "us-east-1"
+  assume_role_arn = "arn:aws:iam::123456789012:role/TerraformRole" # CHANGE THIS
 
   # AMI Options
-  custom_ami_id    = null # Specify your custom AMI ID or leave null
-  ami_owners       = ["amazon"]
+  custom_ami_id = null # Specify your custom AMI ID or leave null
+  ami_owners    = ["amazon"]
 
   # Network Configuration
-  vpc_id            = null # Use default VPC, or specify your VPC
-  subnet_id         = null # Automatically select a default subnet
-  private_subnet    = false
+  vpc_id         = null # Use default VPC, or specify your VPC
+  subnet_id      = null # Automatically select a default subnet
+  private_subnet = false
 
   # Security Configuration - IMPORTANT: Restrict SSH access!
   allowed_ssh_cidrs = [] # CHANGE THIS: Add your specific IP/CIDR blocks

@@ -145,8 +145,8 @@ output "kms_key_alias" {
 output "cloudwatch_agent_config_parameter" {
   description = "Name of the SSM parameter containing CloudWatch agent configuration"
   value = var.enable_cloudwatch_agent ? (
-    var.operating_system == "linux" ? 
-    aws_ssm_parameter.cloudwatch_agent_config_linux[0].name : 
+    var.operating_system == "linux" ?
+    aws_ssm_parameter.cloudwatch_agent_config_linux[0].name :
     aws_ssm_parameter.cloudwatch_agent_config_windows[0].name
   ) : null
 }

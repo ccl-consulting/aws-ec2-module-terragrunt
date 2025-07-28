@@ -10,19 +10,19 @@ terraform {
 
 inputs = {
   # Instance Configuration
-  instance_name     = "private-database-server"
-  instance_type     = "t3.medium"
-  operating_system  = "linux"
-  
+  instance_name    = "private-database-server"
+  instance_type    = "t3.medium"
+  operating_system = "linux"
+
   # Network Configuration - Private subnet
   aws_region     = "us-east-1"
   vpc_id         = "vpc-private123"
   subnet_id      = "subnet-private123"
   private_subnet = true
-  
+
   # No Elastic IP for private instance
   create_eip = false
-  
+
   # Security - No direct internet access
   # Only allow access from within VPC
   custom_ingress_rules = [
@@ -30,18 +30,18 @@ inputs = {
       from_port   = 22
       to_port     = 22
       protocol    = "tcp"
-      cidr_blocks = ["10.0.0.0/16"]  # Only VPC CIDR
+      cidr_blocks = ["10.0.0.0/16"] # Only VPC CIDR
       description = "SSH from VPC"
     },
     {
       from_port   = 3306
       to_port     = 3306
       protocol    = "tcp"
-      cidr_blocks = ["10.0.1.0/24"]  # Application subnet
+      cidr_blocks = ["10.0.1.0/24"] # Application subnet
       description = "MySQL from app servers"
     }
   ]
-  
+
   # Restricted egress - only necessary outbound traffic
   restrict_egress = true
   custom_egress_rules = [
@@ -67,20 +67,20 @@ inputs = {
       description = "HTTP for package updates"
     }
   ]
-  
+
   # Storage Configuration - Encrypted database storage
   volume_size           = 100
   volume_type           = "gp3"
   enable_ebs_encryption = true
-  
+
   # Monitoring
   enable_detailed_monitoring = true
   enable_cloudwatch_agent    = true
-  
+
   # Instance Security
   key_name                = "private-db-key"
   disable_api_termination = true
-  
+
   # User data for database setup
   user_data = base64encode(<<-EOF
     #!/bin/bash
@@ -90,7 +90,7 @@ inputs = {
     systemctl enable mysqld
   EOF
   )
-  
+
   # Tags
   tags = {
     Environment = "Production"

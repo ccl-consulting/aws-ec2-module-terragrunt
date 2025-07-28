@@ -97,7 +97,33 @@ This Terraform module deploys an EC2 instance with enhanced security, flexible c
 | `root_volume_id` | ID of the root EBS volume |
 | `kms_key_id` | ID of the KMS key used for encryption |
 
-## Usage Examples
+## Usage
+
+This module can be used with Terragrunt to deploy EC2 instances with various configurations. The module supports both Linux and Windows instances with comprehensive security and monitoring capabilities.
+
+### Basic Usage
+
+```hcl
+terraform {
+  source = "git::https://github.com/ccl-consulting/aws-ec2-module-terragrunt.git"
+}
+
+inputs = {
+  instance_name = "my-server"
+  instance_type = "t3.micro"
+  aws_region    = "us-east-1"
+  
+  # Configure security appropriately
+  allowed_ssh_cidrs = ["203.0.113.0/24"]
+  
+  tags = {
+    Environment = "Development"
+    Owner       = "DevOps"
+  }
+}
+```
+
+## Examples
 
 ### Basic Linux Instance
 
