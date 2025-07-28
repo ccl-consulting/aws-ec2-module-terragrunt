@@ -6,7 +6,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/ccl-consulting/aws-ec2-module-terragrunt.git?ref=v1.0.0"
+  source = "git::https://github.com/ccl-consulting/aws-ec2-module-terragrunt.git?ref=v0.0.1"
 }
 
 # Use dependency to get VPC/subnet information dynamically
