@@ -176,6 +176,14 @@ resource "aws_instance" "this" {
   user_data                   = var.user_data
   disable_api_termination     = var.disable_api_termination
   monitoring                  = var.enable_detailed_monitoring
+  ebs_optimized               = true
+
+  # Secure Instance Metadata Service (IMDSv2)
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
 
   root_block_device {
     volume_type           = var.volume_type
@@ -289,9 +297,10 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 # =============================================================================
 
 resource "aws_ssm_parameter" "cloudwatch_agent_config_linux" {
-  count = var.enable_cloudwatch_agent && var.operating_system == "linux" ? 1 : 0
-  name  = "/AmazonCloudWatch/${var.instance_name}/linux/config"
-  type  = "String"
+  count  = var.enable_cloudwatch_agent && var.operating_system == "linux" ? 1 : 0
+  name   = "/AmazonCloudWatch/${var.instance_name}/linux/config"
+  type   = "SecureString"
+  key_id = "alias/parameter_store_key"
   value = jsonencode({
     agent = {
       metrics_collection_interval = 60
@@ -364,9 +373,10 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config_linux" {
 }
 
 resource "aws_ssm_parameter" "cloudwatch_agent_config_windows" {
-  count = var.enable_cloudwatch_agent && var.operating_system == "windows" ? 1 : 0
-  name  = "/AmazonCloudWatch/${var.instance_name}/windows/config"
-  type  = "String"
+  count  = var.enable_cloudwatch_agent && var.operating_system == "windows" ? 1 : 0
+  name   = "/AmazonCloudWatch/${var.instance_name}/windows/config"
+  type   = "SecureString"
+  key_id = "alias/parameter_store_key"
   value = jsonencode({
     agent = {
       metrics_collection_interval = 60
