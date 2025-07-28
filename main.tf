@@ -1,0 +1,447 @@
+terraform {
+  backend "s3" {}
+}
+
+# =============================================================================
+# DATA SOURCES
+# =============================================================================
+
+# Linux AMI data source
+data "aws_ami" "linux" {
+  count       = var.operating_system == "linux" && var.custom_ami_id == null ? 1 : 0
+  most_recent = true
+  owners      = var.ami_owners
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
+}
+
+# Windows AMI data source
+data "aws_ami" "windows" {
+  count       = var.operating_system == "windows" && var.custom_ami_id == null ? 1 : 0
+  most_recent = true
+  owners      = var.ami_owners
+
+  filter {
+    name   = "name"
+    values = ["Windows_Server-2022-English-Full-Base-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
+}
+
+# Get VPC information
+data "aws_vpc" "selected" {
+  id      = var.vpc_id
+  default = var.vpc_id == null ? true : null
+}
+
+# Get subnet information if subnet_id is provided
+data "aws_subnet" "selected" {
+  count = var.subnet_id != null ? 1 : 0
+  id    = var.subnet_id
+}
+
+# Get default subnets if no subnet is specified
+data "aws_subnets" "default" {
+  count = var.subnet_id == null ? 1 : 0
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.selected.id]
+  }
+  filter {
+    name   = "default-for-az"
+    values = ["true"]
+  }
+}
+
+# Get current caller identity for KMS key policy
+data "aws_caller_identity" "current" {}
+
+# Get current region
+data "aws_region" "current" {}
+
+# =============================================================================
+# LOCALS
+# =============================================================================
+
+locals {
+  # Determine which AMI to use
+  ami_id = var.custom_ami_id != null ? var.custom_ami_id : (
+    var.operating_system == "linux" ? data.aws_ami.linux[0].id : data.aws_ami.windows[0].id
+  )
+  
+  # Determine subnet to use
+  subnet_id = var.subnet_id != null ? var.subnet_id : data.aws_subnets.default[0].ids[0]
+  
+  # Determine if public IP should be associated
+  associate_public_ip = var.associate_public_ip_address != null ? var.associate_public_ip_address : (
+    var.private_subnet ? false : true
+  )
+  
+  # Security group name
+  security_group_name = var.security_group_name != null ? var.security_group_name : "${var.instance_name}-sg"
+  
+  # KMS key to use
+  kms_key_id = var.enable_ebs_encryption ? (
+    var.kms_key_id != null ? var.kms_key_id : aws_kms_key.ebs[0].arn
+  ) : null
+}
+
+# =============================================================================
+# KMS KEY FOR EBS ENCRYPTION
+# =============================================================================
+
+resource "aws_kms_key" "ebs" {
+  count                   = var.enable_ebs_encryption && var.kms_key_id == null ? 1 : 0
+  description             = "KMS key for EBS encryption - ${var.instance_name}"
+  deletion_window_in_days = var.kms_key_deletion_window
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow EC2 Service"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey*",
+          "kms:CreateGrant",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-ebs-key"
+    },
+    var.tags
+  )
+}
+
+resource "aws_kms_alias" "ebs" {
+  count         = var.enable_ebs_encryption && var.kms_key_id == null ? 1 : 0
+  name          = "alias/${var.instance_name}-ebs-key"
+  target_key_id = aws_kms_key.ebs[0].key_id
+}
+
+# =============================================================================
+# EC2 INSTANCE
+# =============================================================================
+
+resource "aws_instance" "this" {
+  ami                         = local.ami_id
+  instance_type               = var.instance_type
+  subnet_id                   = local.subnet_id
+  vpc_security_group_ids      = [aws_security_group.this.id]
+  associate_public_ip_address = local.associate_public_ip
+  iam_instance_profile        = aws_iam_instance_profile.ssm_profile.name
+  key_name                    = var.key_name
+  user_data                   = var.user_data
+  disable_api_termination     = var.disable_api_termination
+  monitoring                  = var.enable_detailed_monitoring
+
+  root_block_device {
+    volume_type           = var.volume_type
+    volume_size           = var.volume_size
+    encrypted             = var.enable_ebs_encryption
+    kms_key_id           = local.kms_key_id
+    delete_on_termination = true
+    
+    tags = merge(
+      {
+        Name = "${var.instance_name}-root-volume"
+      },
+      var.tags
+    )
+  }
+
+  tags = merge(
+    {
+      Name = var.instance_name
+      OperatingSystem = var.operating_system
+    },
+    var.tags
+  )
+
+  lifecycle {
+    ignore_changes = [
+      ami, # Prevent accidental AMI updates
+    ]
+  }
+}
+
+# =============================================================================
+# ELASTIC IP (OPTIONAL)
+# =============================================================================
+
+resource "aws_eip" "eip" {
+  count    = var.create_eip ? 1 : 0
+  instance = aws_instance.this.id
+  domain   = "vpc"
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-eip"
+    },
+    var.tags
+  )
+
+  depends_on = [aws_instance.this]
+}
+
+# =============================================================================
+# IAM ROLE AND POLICIES
+# =============================================================================
+
+resource "aws_iam_role" "ssm_role" {
+  name = var.iam_role_name
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "sts:AssumeRole",
+        Effect = "Allow",
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = merge(
+    {
+      Name = var.iam_role_name
+    },
+    var.tags
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_core" {
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_role_policy_attachment" "cloudwatch_agent" {
+  count      = var.enable_cloudwatch_agent ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+# Additional policy for Windows instances
+resource "aws_iam_role_policy_attachment" "ec2_role_for_ssm" {
+  count      = var.operating_system == "windows" ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess"
+}
+
+resource "aws_iam_instance_profile" "ssm_profile" {
+  name = "${var.iam_role_name}-profile"
+  role = aws_iam_role.ssm_role.name
+
+  tags = merge(
+    {
+      Name = "${var.iam_role_name}-profile"
+    },
+    var.tags
+  )
+}
+
+# =============================================================================
+# CLOUDWATCH AGENT CONFIGURATION (OPTIONAL)
+# =============================================================================
+
+resource "aws_ssm_parameter" "cloudwatch_agent_config_linux" {
+  count = var.enable_cloudwatch_agent && var.operating_system == "linux" ? 1 : 0
+  name  = "/AmazonCloudWatch/${var.instance_name}/linux/config"
+  type  = "String"
+  value = jsonencode({
+    agent = {
+      metrics_collection_interval = 60
+      run_as_user                 = "cwagent"
+    }
+    metrics = {
+      namespace = "CWAgent"
+      metrics_collected = {
+        cpu = {
+          measurement = [
+            "cpu_usage_idle",
+            "cpu_usage_iowait",
+            "cpu_usage_user",
+            "cpu_usage_system"
+          ]
+          metrics_collection_interval = 60
+          totalcpu                    = false
+        }
+        disk = {
+          measurement = [
+            "used_percent"
+          ]
+          metrics_collection_interval = 60
+          resources = [
+            "*"
+          ]
+        }
+        diskio = {
+          measurement = [
+            "io_time",
+            "read_bytes",
+            "write_bytes",
+            "reads",
+            "writes"
+          ]
+          metrics_collection_interval = 60
+          resources = [
+            "*"
+          ]
+        }
+        mem = {
+          measurement = [
+            "mem_used_percent"
+          ]
+          metrics_collection_interval = 60
+        }
+        netstat = {
+          measurement = [
+            "tcp_established",
+            "tcp_time_wait"
+          ]
+          metrics_collection_interval = 60
+        }
+        swap = {
+          measurement = [
+            "swap_used_percent"
+          ]
+          metrics_collection_interval = 60
+        }
+      }
+    }
+  })
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-cw-config"
+    },
+    var.tags
+  )
+}
+
+resource "aws_ssm_parameter" "cloudwatch_agent_config_windows" {
+  count = var.enable_cloudwatch_agent && var.operating_system == "windows" ? 1 : 0
+  name  = "/AmazonCloudWatch/${var.instance_name}/windows/config"
+  type  = "String"
+  value = jsonencode({
+    agent = {
+      metrics_collection_interval = 60
+    }
+    metrics = {
+      namespace = "CWAgent"
+      metrics_collected = {
+        "LogicalDisk" = {
+          measurement = [
+            "% Free Space"
+          ]
+          metrics_collection_interval = 60
+          resources = [
+            "*"
+          ]
+        }
+        "Memory" = {
+          measurement = [
+            "% Committed Bytes In Use"
+          ]
+          metrics_collection_interval = 60
+        }
+        "Processor" = {
+          measurement = [
+            "% Processor Time"
+          ]
+          metrics_collection_interval = 60
+          resources = [
+            "_Total"
+          ]
+        }
+      }
+    }
+  })
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-cw-config"
+    },
+    var.tags
+  )
+}
+
+resource "aws_ssm_association" "install_agent" {
+  count = var.enable_cloudwatch_agent ? 1 : 0
+  name  = "AWS-ConfigureAWSPackage"
+
+  targets {
+    key    = "InstanceIds"
+    values = [aws_instance.this.id]
+  }
+
+  parameters = {
+    action = "Install"
+    name   = "AmazonCloudWatchAgent"
+  }
+
+  depends_on = [aws_instance.this]
+}
+
+resource "aws_ssm_association" "configure_agent" {
+  count = var.enable_cloudwatch_agent ? 1 : 0
+  name  = "AmazonCloudWatch-ManageAgent"
+
+  targets {
+    key    = "InstanceIds"
+    values = [aws_instance.this.id]
+  }
+
+  parameters = {
+    action                        = "configure"
+    mode                          = "ec2"
+    optionalConfigurationSource  = "ssm"
+    optionalConfigurationLocation = var.operating_system == "linux" ? aws_ssm_parameter.cloudwatch_agent_config_linux[0].name : aws_ssm_parameter.cloudwatch_agent_config_windows[0].name
+  }
+
+  depends_on = [aws_instance.this, aws_ssm_association.install_agent]
+}
