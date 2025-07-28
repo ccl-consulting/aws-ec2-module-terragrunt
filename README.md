@@ -22,9 +22,9 @@ This Terraform module deploys an EC2 instance with enhanced security, flexible c
 
 ## Requirements
 
-- Terraform e= 1.0
-- AWS Provider e= 4.0
-- Terragrunt e= 0.35
+- Terraform version >= 1.0
+- AWS Provider version >= 4.0
+- Terragrunt version >= 0.35
 - AWS CLI configured with appropriate permissions
 - VPC and subnets (will use default VPC if not specified)
 
