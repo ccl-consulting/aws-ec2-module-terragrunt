@@ -7,6 +7,10 @@ skip-check:
   # This is a cost consideration for many users
   - CKV_AWS_126  # "Ensure that detailed monitoring is enabled for EC2 instances"
   
+  # VPC endpoint security group is attached via security_group_ids parameter
+  # This is a false positive - Checkov cannot detect the attachment relationship
+  - CKV2_AWS_5   # "Ensure that Security Groups are attached to another resource"
+  
 # Set thresholds for security scanning
 # soft-fail: true  # Uncomment to make security failures warnings instead of errors
 
