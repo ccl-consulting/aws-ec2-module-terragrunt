@@ -17,6 +17,9 @@ This Terraform module deploys an EC2 instance with enhanced security, flexible c
 - Optional Elastic IP association
 - CloudWatch monitoring and logging
 - Custom VPC and subnet configuration
+- NAT Gateway creation and management for private subnet internet access
+- VPC Endpoints for SSM connectivity in private subnets
+- Private route table management
 - Comprehensive tagging support
 - AWS Systems Manager (SSM) integration
 
@@ -54,6 +57,23 @@ This Terraform module deploys an EC2 instance with enhanced security, flexible c
 | `subnet_id` | `string` | `null` | Subnet ID (auto-selects if not specified) |
 | `private_subnet` | `bool` | `false` | Whether to deploy in private subnet |
 | `associate_public_ip_address` | `bool` | `null` | Whether to associate public IP |
+
+### NAT Gateway Configuration
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `create_nat_gateway` | `bool` | `false` | Whether to create NAT Gateway for outbound internet access |
+| `nat_gateway_subnet_id` | `string` | `null` | Public subnet ID for NAT Gateway placement (required if creating NAT Gateway) |
+| `nat_gateway_allocation_id` | `string` | `null` | Existing Elastic IP allocation ID for NAT Gateway (new EIP created if not provided) |
+| `nat_gateway_id` | `string` | `null` | Existing NAT Gateway ID to use instead of creating new one |
+
+### Private Subnet and VPC Endpoints
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `create_private_route_table` | `bool` | `false` | Create private route table (removes internet gateway route) |
+| `create_vpc_endpoints` | `bool` | `true` | Create VPC endpoints for SSM connectivity |
+| `vpc_endpoint_subnet_ids` | `list(string)` | `null` | Subnet IDs for VPC endpoints (defaults to instance subnet) |
 
 ### Security Configuration
 
@@ -96,6 +116,9 @@ This Terraform module deploys an EC2 instance with enhanced security, flexible c
 | `security_group_id` | ID of the security group |
 | `root_volume_id` | ID of the root EBS volume |
 | `kms_key_id` | ID of the KMS key used for encryption |
+| `nat_gateway_id` | ID of the NAT Gateway (if created) |
+| `nat_gateway_public_ip` | Public IP of the NAT Gateway (if created) |
+| `private_route_table_id` | ID of the private route table (if created) |
 
 ## Usage
 
@@ -181,7 +204,7 @@ inputs = {
 }
 ```
 
-### Private Instance with Restricted Access
+### Private Instance with VPC Endpoints Only (Most Secure)
 
 ```hcl
 terraform {
@@ -194,9 +217,15 @@ inputs = {
   aws_region     = "us-east-1"
   
   vpc_id         = "vpc-12345678"
-  subnet_id      = "subnet-12345678"
+  subnet_id      = "subnet-private123"
   private_subnet = true
   create_eip     = false
+  
+  # Create private route table (removes internet gateway route)
+  create_private_route_table = true
+  
+  # Enable VPC endpoints for SSM access
+  create_vpc_endpoints = true
   
   custom_ingress_rules = [
     {
@@ -214,8 +243,15 @@ inputs = {
       from_port   = 443
       to_port     = 443
       protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
-      description = "HTTPS outbound"
+      cidr_blocks = ["10.0.0.0/16"]
+      description = "HTTPS to VPC endpoints only"
+    },
+    {
+      from_port   = 53
+      to_port     = 53
+      protocol    = "udp"
+      cidr_blocks = ["10.0.0.0/16"]
+      description = "DNS resolution"
     }
   ]
   
@@ -230,6 +266,127 @@ inputs = {
 }
 ```
 
+### Private Instance with NAT Gateway (For Internet Access)
+
+```hcl
+terraform {
+  source = "git::https://github.com/ccl-consulting/aws-ec2-module-terragrunt.git"
+}
+
+inputs = {
+  instance_name  = "private-app-server"
+  instance_type  = "t3.medium"
+  operating_system = "linux"
+  aws_region     = "us-east-1"
+  
+  vpc_id         = "vpc-12345678"
+  subnet_id      = "subnet-private123"
+  private_subnet = true
+  create_eip     = false
+  
+  # Create NAT Gateway for internet access
+  create_nat_gateway     = true
+  nat_gateway_subnet_id  = "subnet-public456"  # Must be public subnet
+  
+  # Create private route table with NAT Gateway route
+  create_private_route_table = true
+  
+  # VPC endpoints for better performance
+  create_vpc_endpoints = true
+  
+  custom_ingress_rules = [
+    {
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = ["10.0.0.0/16"]
+      description = "SSH from VPC"
+    }
+  ]
+  
+  restrict_egress = true
+  custom_egress_rules = [
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "HTTPS to internet via NAT Gateway"
+    },
+    {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "HTTP for package updates"
+    },
+    {
+      from_port   = 53
+      to_port     = 53
+      protocol    = "udp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "DNS resolution"
+    }
+  ]
+  
+  volume_size           = 50
+  enable_ebs_encryption = true
+  
+  tags = {
+    Environment = "Production"
+    Application = "AppServer"
+    NetworkTier = "private"
+    InternetAccess = "nat-gateway"
+  }
+}
+```
+
+## Private Subnet Connectivity Options
+
+This module provides flexible options for private subnet connectivity, each with different security and cost implications:
+
+### VPC Endpoints Only (Most Secure, Lower Cost)
+
+**Use when:**
+- Maximum security is required
+- No internet access needed
+- Linux instances with pre-configured software
+- Cost optimization is important
+
+**Configuration:**
+```hcl
+create_vpc_endpoints = true
+create_private_route_table = true
+# No NAT Gateway configuration
+```
+
+### NAT Gateway + VPC Endpoints (Balanced Security and Functionality)
+
+**Use when:**
+- Windows instances (require internet for updates)
+- Linux instances needing package updates/installations
+- Applications requiring external API access
+- Certificate validation is required
+
+**Configuration:**
+```hcl
+create_nat_gateway = true
+nat_gateway_subnet_id = "subnet-public123"
+create_private_route_table = true
+create_vpc_endpoints = true  # Optional but recommended for performance
+```
+
+### Key Differences
+
+| Feature | VPC Endpoints Only | NAT Gateway + VPC Endpoints |
+|---------|-------------------|-----------------------------|
+| **Security** | Highest (no internet access) | High (filtered internet access) |
+| **Cost** | Lower (VPC endpoint charges only) | Higher (NAT Gateway + data charges) |
+| **Windows Updates** | ❌ Not possible | ✅ Fully supported |
+| **Package Updates** | ❌ Limited | ✅ Full access |
+| **External APIs** | ❌ Not accessible | ✅ Accessible |
+| **SSM Access** | ✅ Via VPC endpoints | ✅ Via VPC endpoints (faster) |
+
 ## Security Best Practices
 
 - **Network Security**: Use specific CIDR blocks instead of `0.0.0.0/0` for ingress rules
@@ -238,6 +395,8 @@ inputs = {
 - **Monitoring**: Enable CloudWatch detailed monitoring for production instances
 - **Updates**: Keep AMIs updated with latest security patches
 - **Egress Control**: Use `restrict_egress = true` for sensitive workloads
+- **NAT Gateway**: Only create when internet access is required; prefer VPC endpoints for AWS services
+- **Private Subnets**: Always use `create_private_route_table = true` for truly private instances
 
 ## Contributing
 

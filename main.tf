@@ -106,6 +106,9 @@ locals {
   kms_key_id = var.enable_ebs_encryption ? (
     var.kms_key_id != null ? var.kms_key_id : aws_kms_key.ebs[0].arn
   ) : null
+
+  # Determine NAT Gateway ID to use - prefer created NAT Gateway over provided ID
+  nat_gateway_id = var.create_nat_gateway ? aws_nat_gateway.this[0].id : var.nat_gateway_id
 }
 
 # =============================================================================
@@ -291,6 +294,41 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 
 
 # =============================================================================
+# NAT GATEWAY FOR PRIVATE SUBNET INTERNET ACCESS
+# =============================================================================
+
+# Create Elastic IP for NAT Gateway if needed
+resource "aws_eip" "nat_gateway" {
+  count  = var.create_nat_gateway && var.nat_gateway_allocation_id == null ? 1 : 0
+  domain = "vpc"
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-nat-gw-eip"
+    },
+    var.tags
+  )
+
+  depends_on = [data.aws_vpc.selected]
+}
+
+# Create NAT Gateway
+resource "aws_nat_gateway" "this" {
+  count         = var.create_nat_gateway ? 1 : 0
+  allocation_id = var.nat_gateway_allocation_id != null ? var.nat_gateway_allocation_id : aws_eip.nat_gateway[0].id
+  subnet_id     = var.nat_gateway_subnet_id
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-nat-gw"
+    },
+    var.tags
+  )
+
+  depends_on = [aws_eip.nat_gateway]
+}
+
+# =============================================================================
 # PRIVATE SUBNET ROUTE TABLE MANAGEMENT
 # =============================================================================
 
@@ -299,12 +337,12 @@ resource "aws_route_table" "private" {
   count  = var.create_private_route_table ? 1 : 0
   vpc_id = data.aws_vpc.selected.id
 
-  # Only add NAT Gateway route if provided
+  # Add NAT Gateway route - prefer created NAT Gateway over provided ID
   dynamic "route" {
-    for_each = var.nat_gateway_id != null ? [1] : []
+    for_each = local.nat_gateway_id != null ? [1] : []
     content {
       cidr_block     = "0.0.0.0/0"
-      nat_gateway_id = var.nat_gateway_id
+      nat_gateway_id = local.nat_gateway_id
     }
   }
 

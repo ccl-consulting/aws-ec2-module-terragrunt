@@ -1,6 +1,13 @@
-# Example: Private Instance with Proper SSM Connectivity
+# Example: Private Instance with SSM Connectivity (VPC Endpoints Only)
 # This example shows how to deploy a private instance that can connect to SSM
-# without internet gateway routes in its route table.
+# without internet gateway routes and without NAT Gateway (most secure).
+#
+# IMPORTANT: For Windows instances or instances requiring internet access for:
+# - Windows Updates
+# - Package updates (yum, apt, etc.)
+# - Certificate validation  
+# - SSM agent updates
+# Consider using the 'private-instance-with-nat-gateway.hcl' example instead.
 
 include "root" {
   path = find_in_parent_folders()

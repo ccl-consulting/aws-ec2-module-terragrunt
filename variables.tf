@@ -256,3 +256,21 @@ variable "nat_gateway_id" {
   type        = string
   default     = null
 }
+
+variable "create_nat_gateway" {
+  description = "Whether to create a NAT Gateway for outbound internet access from private subnet"
+  type        = bool
+  default     = false
+}
+
+variable "nat_gateway_subnet_id" {
+  description = "Subnet ID for NAT Gateway (must be a public subnet). Required if create_nat_gateway is true"
+  type        = string
+  default     = null
+}
+
+variable "nat_gateway_allocation_id" {
+  description = "Allocation ID of existing Elastic IP for NAT Gateway. If not provided, a new EIP will be created"
+  type        = string
+  default     = null
+}

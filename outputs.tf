@@ -155,3 +155,51 @@ output "detailed_monitoring_enabled" {
   description = "Whether detailed monitoring is enabled for the instance"
   value       = var.enable_detailed_monitoring
 }
+
+# =============================================================================
+# NAT GATEWAY OUTPUTS
+# =============================================================================
+
+output "nat_gateway_id" {
+  description = "ID of the NAT Gateway (if created)"
+  value       = var.create_nat_gateway ? aws_nat_gateway.this[0].id : null
+}
+
+output "nat_gateway_allocation_id" {
+  description = "Allocation ID of the Elastic IP used by NAT Gateway (if created)"
+  value       = var.create_nat_gateway ? aws_nat_gateway.this[0].allocation_id : null
+}
+
+output "nat_gateway_network_interface_id" {
+  description = "Network interface ID of the NAT Gateway (if created)"
+  value       = var.create_nat_gateway ? aws_nat_gateway.this[0].network_interface_id : null
+}
+
+output "nat_gateway_private_ip" {
+  description = "Private IP address of the NAT Gateway (if created)"
+  value       = var.create_nat_gateway ? aws_nat_gateway.this[0].private_ip : null
+}
+
+output "nat_gateway_public_ip" {
+  description = "Public IP address of the NAT Gateway (if created)"
+  value       = var.create_nat_gateway ? aws_nat_gateway.this[0].public_ip : null
+}
+
+output "nat_gateway_subnet_id" {
+  description = "Subnet ID where the NAT Gateway is deployed (if created)"
+  value       = var.create_nat_gateway ? aws_nat_gateway.this[0].subnet_id : null
+}
+
+# =============================================================================
+# ROUTE TABLE OUTPUTS
+# =============================================================================
+
+output "private_route_table_id" {
+  description = "ID of the private route table (if created)"
+  value       = var.create_private_route_table ? aws_route_table.private[0].id : null
+}
+
+output "private_route_table_association_id" {
+  description = "ID of the private route table association (if created)"
+  value       = var.create_private_route_table && var.subnet_id != null ? aws_route_table_association.private[0].id : null
+}
