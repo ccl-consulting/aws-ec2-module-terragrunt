@@ -296,11 +296,27 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 
 # endpoint for SSM
 
+# Get VPC endpoint service data for SSM
+data "aws_vpc_endpoint_service" "ssm" {
+  count   = var.create_vpc_endpoints ? 1 : 0
+  service = "ssm"
+}
+
+data "aws_vpc_endpoint_service" "ec2messages" {
+  count   = var.create_vpc_endpoints ? 1 : 0
+  service = "ec2messages"
+}
+
+data "aws_vpc_endpoint_service" "ssmmessages" {
+  count   = var.create_vpc_endpoints ? 1 : 0
+  service = "ssmmessages"
+}
+
 # SSM VPC Endpoint
 resource "aws_vpc_endpoint" "ssm" {
   count              = var.create_vpc_endpoints ? 1 : 0
   vpc_id             = data.aws_vpc.selected.id
-  service_name       = "com.amazonaws.${data.aws_region.current.name}.ssm"
+  service_name       = data.aws_vpc_endpoint_service.ssm[0].service_name
   vpc_endpoint_type  = "Interface"
   subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
   security_group_ids = [aws_security_group.vpc_endpoint[0].id]
@@ -317,7 +333,7 @@ resource "aws_vpc_endpoint" "ssm" {
 resource "aws_vpc_endpoint" "ec2messages" {
   count              = var.create_vpc_endpoints ? 1 : 0
   vpc_id             = data.aws_vpc.selected.id
-  service_name       = "com.amazonaws.${data.aws_region.current.name}.ec2messages"
+  service_name       = data.aws_vpc_endpoint_service.ec2messages[0].service_name
   vpc_endpoint_type  = "Interface"
   subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
   security_group_ids = [aws_security_group.vpc_endpoint[0].id]
@@ -333,7 +349,7 @@ resource "aws_vpc_endpoint" "ec2messages" {
 resource "aws_vpc_endpoint" "ssmmessages" {
   count              = var.create_vpc_endpoints ? 1 : 0
   vpc_id             = data.aws_vpc.selected.id
-  service_name       = "com.amazonaws.${data.aws_region.current.name}.ssmmessages"
+  service_name       = data.aws_vpc_endpoint_service.ssmmessages[0].service_name
   vpc_endpoint_type  = "Interface"
   subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
   security_group_ids = [aws_security_group.vpc_endpoint[0].id]
