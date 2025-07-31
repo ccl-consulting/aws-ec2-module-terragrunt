@@ -290,7 +290,42 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 
 
 
-# endpoint for SSM
+# =============================================================================
+# PRIVATE SUBNET ROUTE TABLE MANAGEMENT
+# =============================================================================
+
+# Create private route table if requested
+resource "aws_route_table" "private" {
+  count  = var.create_private_route_table ? 1 : 0
+  vpc_id = data.aws_vpc.selected.id
+
+  # Only add NAT Gateway route if provided
+  dynamic "route" {
+    for_each = var.nat_gateway_id != null ? [1] : []
+    content {
+      cidr_block     = "0.0.0.0/0"
+      nat_gateway_id = var.nat_gateway_id
+    }
+  }
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-private-rt"
+    },
+    var.tags
+  )
+}
+
+# Associate the private route table with the subnet
+resource "aws_route_table_association" "private" {
+  count          = var.create_private_route_table && var.subnet_id != null ? 1 : 0
+  subnet_id      = var.subnet_id
+  route_table_id = aws_route_table.private[0].id
+}
+
+# =============================================================================
+# VPC ENDPOINTS FOR SSM
+# =============================================================================
 
 # Get VPC endpoint service data for SSM
 data "aws_vpc_endpoint_service" "ssm" {

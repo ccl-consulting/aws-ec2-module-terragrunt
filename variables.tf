@@ -244,3 +244,15 @@ variable "vpc_endpoint_subnet_ids" {
   type        = list(string)
   default     = null
 }
+
+variable "create_private_route_table" {
+  description = "Whether to create a private route table for the subnet (removes internet gateway route)"
+  type        = bool
+  default     = false
+}
+
+variable "nat_gateway_id" {
+  description = "NAT Gateway ID for private subnet route table (optional, for outbound internet access)"
+  type        = string
+  default     = null
+}
