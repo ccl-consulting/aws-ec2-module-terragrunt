@@ -232,3 +232,15 @@ variable "disable_api_termination" {
   description = "Whether to enable termination protection"
   default     = false
 }
+
+variable "create_vpc_endpoints" {
+  description = "Whether to create VPC endpoints for SSM"
+  type        = bool
+  default     = true
+}
+
+variable "vpc_endpoint_subnet_ids" {
+  description = "Subnet IDs for VPC endpoints (defaults to instance subnet)"
+  type        = list(string)
+  default     = null
+}
