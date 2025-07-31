@@ -208,11 +208,7 @@ resource "aws_instance" "this" {
     var.tags
   )
 
-  lifecycle {
-    ignore_changes = [
-      ami, # Prevent accidental AMI updates
-    ]
-  }
+  
 }
 
 # =============================================================================
