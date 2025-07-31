@@ -298,13 +298,13 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 
 # SSM VPC Endpoint
 resource "aws_vpc_endpoint" "ssm" {
-  count               = var.create_vpc_endpoints ? 1 : 0
-  vpc_id              = data.aws_vpc.selected.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.ssm"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
-  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
-  
+  count              = var.create_vpc_endpoints ? 1 : 0
+  vpc_id             = data.aws_vpc.selected.id
+  service_name       = "com.amazonaws.${data.aws_region.current.name}.ssm"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids = [aws_security_group.vpc_endpoint[0].id]
+
   tags = merge(
     {
       Name = "${var.instance_name}-ssm-endpoint"
@@ -315,13 +315,13 @@ resource "aws_vpc_endpoint" "ssm" {
 
 # Additional endpoints for EC2Messages and SSMMessages
 resource "aws_vpc_endpoint" "ec2messages" {
-  count               = var.create_vpc_endpoints ? 1 : 0
-  vpc_id              = data.aws_vpc.selected.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.ec2messages"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
-  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
-  
+  count              = var.create_vpc_endpoints ? 1 : 0
+  vpc_id             = data.aws_vpc.selected.id
+  service_name       = "com.amazonaws.${data.aws_region.current.name}.ec2messages"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids = [aws_security_group.vpc_endpoint[0].id]
+
   tags = merge(
     {
       Name = "${var.instance_name}-ec2messages-endpoint"
@@ -331,13 +331,13 @@ resource "aws_vpc_endpoint" "ec2messages" {
 }
 
 resource "aws_vpc_endpoint" "ssmmessages" {
-  count               = var.create_vpc_endpoints ? 1 : 0
-  vpc_id              = data.aws_vpc.selected.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.ssmmessages"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
-  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
-  
+  count              = var.create_vpc_endpoints ? 1 : 0
+  vpc_id             = data.aws_vpc.selected.id
+  service_name       = "com.amazonaws.${data.aws_region.current.name}.ssmmessages"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids = [aws_security_group.vpc_endpoint[0].id]
+
   tags = merge(
     {
       Name = "${var.instance_name}-ssmmessages-endpoint"
