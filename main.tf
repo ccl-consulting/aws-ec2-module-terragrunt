@@ -361,12 +361,22 @@ resource "aws_security_group" "vpc_endpoint" {
     description = "HTTPS from VPC"
   }
 
+  # Restrict egress to only necessary traffic for VPC endpoints
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "All outbound traffic"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [data.aws_vpc.selected.cidr_block]
+    description = "HTTPS within VPC for endpoint responses"
+  }
+
+  # Allow DNS resolution for endpoint functionality
+  egress {
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = [data.aws_vpc.selected.cidr_block]
+    description = "DNS resolution within VPC"
   }
 
   tags = merge(
@@ -375,6 +385,10 @@ resource "aws_security_group" "vpc_endpoint" {
     },
     var.tags
   )
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # =============================================================================
