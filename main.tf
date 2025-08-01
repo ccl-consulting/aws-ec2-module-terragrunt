@@ -239,7 +239,9 @@ resource "aws_instance" "this" {
     },
     var.tags
   )
-
+  lifecycle {
+    replace_triggered_by = [local.user_data_with_ssm]
+  }
 
 }
 
@@ -736,3 +738,4 @@ resource "aws_ssm_association" "configure_agent" {
 
   depends_on = [aws_instance.this, aws_ssm_association.install_agent]
 }
+
