@@ -1,5 +1,5 @@
 terraform {
-  backend "s3" {}
+  # backend "s3" {}
 }
 
 # =============================================================================
@@ -387,7 +387,7 @@ resource "aws_route_table_association" "private" {
 
 # Check for existing VPC endpoints in the VPC
 data "aws_vpc_endpoint" "existing_ssm" {
-  count = var.create_vpc_endpoints 66 var.check_for_existing_vpc_endpoints ? 1 : 0
+  count = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? 1 : 0
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.selected.id]
@@ -403,7 +403,7 @@ data "aws_vpc_endpoint" "existing_ssm" {
 }
 
 data "aws_vpc_endpoint" "existing_ec2messages" {
-  count = var.create_vpc_endpoints 66 var.check_for_existing_vpc_endpoints ? 1 : 0
+  count = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? 1 : 0
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.selected.id]
@@ -419,7 +419,7 @@ data "aws_vpc_endpoint" "existing_ec2messages" {
 }
 
 data "aws_vpc_endpoint" "existing_ssmmessages" {
-  count = var.create_vpc_endpoints 66 var.check_for_existing_vpc_endpoints ? 1 : 0
+  count = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? 1 : 0
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.selected.id]
