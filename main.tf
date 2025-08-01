@@ -129,6 +129,15 @@ locals {
       !local.existing_ssmmessages_endpoint_exists
     ) : true
   )
+
+  # User data script to ensure SSM agent is installed and running
+  user_data_with_ssm = var.user_data != null ? var.user_data : (
+    var.operating_system == "linux" ? base64encode(templatefile("${path.module}/user_data/linux_ssm.sh", {
+      region = data.aws_region.current.name
+      })) : base64encode(templatefile("${path.module}/user_data/windows_ssm.ps1", {
+      region = data.aws_region.current.name
+    }))
+  )
 }
 
 # =============================================================================
@@ -196,7 +205,7 @@ resource "aws_instance" "this" {
   associate_public_ip_address = local.associate_public_ip
   iam_instance_profile        = aws_iam_instance_profile.ssm_profile.name
   key_name                    = var.key_name
-  user_data                   = var.user_data
+  user_data                   = local.user_data_with_ssm
   disable_api_termination     = var.disable_api_termination
   monitoring                  = var.enable_detailed_monitoring
   ebs_optimized               = true
