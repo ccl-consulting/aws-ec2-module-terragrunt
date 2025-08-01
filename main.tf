@@ -387,7 +387,7 @@ resource "aws_iam_policy" "fleet_manager_admin" {
         Condition = {
           StringLike = {
             "ssm:resourceTag/aws:ssmmessages:session-id" = [
-              "${aws:userid}"
+              "$${aws:userid}"
             ]
           }
         }
@@ -474,7 +474,7 @@ resource "aws_iam_policy" "fleet_manager_readonly" {
         Condition = {
           StringLike = {
             "ssm:resourceTag/aws:ssmmessages:session-id" = [
-              "${aws:userid}"
+              "$${aws:userid}"
             ]
           }
         }
