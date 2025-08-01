@@ -204,7 +204,7 @@ resource "aws_instance" "this" {
   vpc_security_group_ids      = [aws_security_group.this.id]
   associate_public_ip_address = local.associate_public_ip
   iam_instance_profile        = aws_iam_instance_profile.ssm_profile.name
-  key_name                    = var.key_name
+  key_name                    = var.create_key_pair ? aws_key_pair.this[0].key_name : var.key_name
   user_data                   = local.user_data_with_ssm
   disable_api_termination     = var.disable_api_termination
   monitoring                  = var.enable_detailed_monitoring

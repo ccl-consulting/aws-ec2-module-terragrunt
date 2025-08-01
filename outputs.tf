@@ -319,3 +319,62 @@ output "default_host_management_enabled" {
   description = "Whether Default Host Management Configuration is enabled"
   value       = var.enable_default_host_management
 }
+
+# =============================================================================
+# KEY PAIR OUTPUTS
+# =============================================================================
+
+output "key_pair_created" {
+  description = "Whether a key pair was created by this module"
+  value       = var.create_key_pair
+}
+
+output "key_pair_name" {
+  description = "Name of the key pair used by the instance"
+  value       = var.create_key_pair ? aws_key_pair.this[0].key_name : var.key_name
+}
+
+output "key_pair_id" {
+  description = "ID of the created key pair (if created)"
+  value       = var.create_key_pair ? aws_key_pair.this[0].key_pair_id : null
+}
+
+output "key_pair_arn" {
+  description = "ARN of the created key pair (if created)"
+  value       = var.create_key_pair ? aws_key_pair.this[0].arn : null
+}
+
+output "key_pair_fingerprint" {
+  description = "Fingerprint of the created key pair (if created)"
+  value       = var.create_key_pair ? aws_key_pair.this[0].fingerprint : null
+}
+
+output "private_key_ssm_parameter" {
+  description = "SSM Parameter Store path where private key is stored (if generated and stored)"
+  value       = var.create_key_pair && var.public_key == null && var.save_private_key ? aws_ssm_parameter.private_key[0].name : null
+}
+
+output "private_key_pem" {
+  description = "Private key in PEM format (only available when key is generated, not when using existing public key)"
+  value       = var.create_key_pair && var.public_key == null ? tls_private_key.this[0].private_key_pem : null
+  sensitive   = true
+}
+
+output "public_key_openssh" {
+  description = "Public key in OpenSSH format"
+  value       = var.create_key_pair ? (var.public_key != null ? var.public_key : tls_private_key.this[0].public_key_openssh) : null
+}
+
+# =============================================================================
+# SESSION MANAGER ENHANCED OUTPUTS
+# =============================================================================
+
+output "session_manager_permissions_enabled" {
+  description = "Whether enhanced Session Manager permissions are enabled"
+  value       = var.enable_session_manager_permissions
+}
+
+output "session_manager_enhanced_policy_arn" {
+  description = "ARN of the enhanced Session Manager IAM policy (if enabled)"
+  value       = var.enable_session_manager_permissions ? aws_iam_policy.session_manager_enhanced[0].arn : null
+}
