@@ -114,11 +114,11 @@ locals {
   existing_ssm_endpoint_exists         = var.create_vpc_endpoints ? length(data.aws_vpc_endpoints.existing_ssm[0].ids) > 0 : false
   existing_ec2messages_endpoint_exists = var.create_vpc_endpoints ? length(data.aws_vpc_endpoints.existing_ec2messages[0].ids) > 0 : false
   existing_ssmmessages_endpoint_exists = var.create_vpc_endpoints ? length(data.aws_vpc_endpoints.existing_ssmmessages[0].ids) > 0 : false
-  
+
   # Determine if we need to create security group for VPC endpoints
   create_vpc_endpoint_sg = var.create_vpc_endpoints && (
-    !local.existing_ssm_endpoint_exists || 
-    !local.existing_ec2messages_endpoint_exists || 
+    !local.existing_ssm_endpoint_exists ||
+    !local.existing_ec2messages_endpoint_exists ||
     !local.existing_ssmmessages_endpoint_exists
   )
 }
