@@ -458,3 +458,43 @@ variable "save_private_key" {
   type        = bool
   default     = true
 }
+
+# =============================================================================
+# ADDITIONAL VPC ENDPOINTS FOR COMPLETE SSM FUNCTIONALITY
+# =============================================================================
+
+variable "create_s3_vpc_endpoint" {
+  description = "Whether to create S3 VPC endpoint for Session Manager S3 logging"
+  type        = bool
+  default     = false
+}
+
+variable "create_kms_vpc_endpoint" {
+  description = "Whether to create KMS VPC endpoint for Session Manager encryption"
+  type        = bool
+  default     = false
+}
+
+variable "create_logs_vpc_endpoint" {
+  description = "Whether to create CloudWatch Logs VPC endpoint for Session Manager logging"
+  type        = bool
+  default     = false
+}
+
+variable "create_monitoring_vpc_endpoint" {
+  description = "Whether to create CloudWatch Monitoring VPC endpoint for metrics"
+  type        = bool
+  default     = false
+}
+
+variable "enable_private_dns" {
+  description = "Whether to enable private DNS resolution for VPC endpoints"
+  type        = bool
+  default     = true
+}
+
+variable "s3_vpc_endpoint_route_table_ids" {
+  description = "Route table IDs for S3 gateway VPC endpoint (required if create_s3_vpc_endpoint is true)"
+  type        = list(string)
+  default     = null
+}

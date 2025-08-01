@@ -378,3 +378,27 @@ output "session_manager_enhanced_policy_arn" {
   description = "ARN of the enhanced Session Manager IAM policy (if enabled)"
   value       = var.enable_session_manager_permissions ? aws_iam_policy.session_manager_enhanced[0].arn : null
 }
+
+# =============================================================================
+# ADDITIONAL VPC ENDPOINT OUTPUTS
+# =============================================================================
+
+output "s3_vpc_endpoint_id" {
+  description = "ID of the S3 Gateway VPC endpoint (if created)"
+  value       = var.create_s3_vpc_endpoint ? aws_vpc_endpoint.s3[0].id : null
+}
+
+output "kms_vpc_endpoint_id" {
+  description = "ID of the KMS Interface VPC endpoint (if created)"
+  value       = var.create_kms_vpc_endpoint ? aws_vpc_endpoint.kms[0].id : null
+}
+
+output "logs_vpc_endpoint_id" {
+  description = "ID of the CloudWatch Logs Interface VPC endpoint (if created)"
+  value       = var.create_logs_vpc_endpoint ? aws_vpc_endpoint.logs[0].id : null
+}
+
+output "monitoring_vpc_endpoint_id" {
+  description = "ID of the CloudWatch Monitoring Interface VPC endpoint (if created)"
+  value       = var.create_monitoring_vpc_endpoint ? aws_vpc_endpoint.monitoring[0].id : null
+}

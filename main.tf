@@ -854,6 +854,86 @@ resource "aws_security_group" "vpc_endpoint" {
 }
 
 # =============================================================================
+# ADDITIONAL VPC ENDPOINTS FOR COMPLETE SSM FUNCTIONALITY IN PRIVATE SUBNETS
+# =============================================================================
+
+# S3 Gateway VPC Endpoint (for Session Manager S3 logging)
+resource "aws_vpc_endpoint" "s3" {
+  count             = var.create_s3_vpc_endpoint ? 1 : 0
+  vpc_id            = data.aws_vpc.selected.id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = var.s3_vpc_endpoint_route_table_ids
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-s3-endpoint"
+    },
+    var.tags
+  )
+}
+
+# KMS Interface VPC Endpoint (for Session Manager encryption)
+resource "aws_vpc_endpoint" "kms" {
+  count               = var.create_kms_vpc_endpoint ? 1 : 0
+  vpc_id              = data.aws_vpc.selected.id
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.kms"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
+  private_dns_enabled = var.enable_private_dns
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-kms-endpoint"
+    },
+    var.tags
+  )
+
+  depends_on = [aws_security_group.vpc_endpoint]
+}
+
+# CloudWatch Logs Interface VPC Endpoint (for Session Manager CloudWatch logging)
+resource "aws_vpc_endpoint" "logs" {
+  count               = var.create_logs_vpc_endpoint ? 1 : 0
+  vpc_id              = data.aws_vpc.selected.id
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.logs"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
+  private_dns_enabled = var.enable_private_dns
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-logs-endpoint"
+    },
+    var.tags
+  )
+
+  depends_on = [aws_security_group.vpc_endpoint]
+}
+
+# CloudWatch Monitoring Interface VPC Endpoint (for CloudWatch metrics)
+resource "aws_vpc_endpoint" "monitoring" {
+  count               = var.create_monitoring_vpc_endpoint ? 1 : 0
+  vpc_id              = data.aws_vpc.selected.id
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.monitoring"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
+  private_dns_enabled = var.enable_private_dns
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-monitoring-endpoint"
+    },
+    var.tags
+  )
+
+  depends_on = [aws_security_group.vpc_endpoint]
+}
+
+# =============================================================================
 # CLOUDWATCH AGENT CONFIGURATION (OPTIONAL)
 # =============================================================================
 
