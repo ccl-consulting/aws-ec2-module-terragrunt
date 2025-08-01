@@ -204,7 +204,7 @@ resource "aws_instance" "this" {
   vpc_security_group_ids      = [aws_security_group.this.id]
   associate_public_ip_address = local.associate_public_ip
   iam_instance_profile        = aws_iam_instance_profile.ssm_profile.name
-  key_name                    = var.key_name
+  key_name                    = var.create_key_pair ? aws_key_pair.this[0].key_name : var.key_name
   user_data                   = local.user_data_with_ssm
   disable_api_termination     = var.disable_api_termination
   monitoring                  = var.enable_detailed_monitoring
@@ -239,9 +239,6 @@ resource "aws_instance" "this" {
     },
     var.tags
   )
-  lifecycle {
-    replace_triggered_by = [local.user_data_with_ssm]
-  }
 
 }
 
@@ -320,6 +317,287 @@ resource "aws_iam_instance_profile" "ssm_profile" {
     },
     var.tags
   )
+}
+
+# Fleet Manager IAM Policy for Admin Access
+resource "aws_iam_policy" "fleet_manager_admin" {
+  count       = var.enable_fleet_manager && var.fleet_manager_access_level == "admin" ? 1 : 0
+  name        = "${var.iam_role_name}-fleet-manager-admin"
+  path        = "/"
+  description = "Fleet Manager administrator access policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EC2"
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateTags",
+          "ec2:DeleteTags",
+          "ec2:DescribeInstances",
+          "ec2:DescribeTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "General"
+        Effect = "Allow"
+        Action = [
+          "ssm:AddTagsToResource",
+          "ssm:DescribeInstanceAssociationsStatus",
+          "ssm:DescribeInstancePatches",
+          "ssm:DescribeInstancePatchStates",
+          "ssm:DescribeInstanceProperties",
+          "ssm:GetCommandInvocation",
+          "ssm:GetServiceSetting",
+          "ssm:GetInventorySchema",
+          "ssm:ListComplianceItems",
+          "ssm:ListInventoryEntries",
+          "ssm:ListTagsForResource",
+          "ssm:ListCommandInvocations",
+          "ssm:ListAssociations",
+          "ssm:RemoveTagsFromResource"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "SendCommand"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetDocument",
+          "ssm:SendCommand",
+          "ssm:StartSession"
+        ]
+        Resource = [
+          "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
+          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:managed-instance/*",
+          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:document/SSM-SessionManagerRunShell",
+          "arn:aws:ssm:*:*:document/AWS-PasswordReset",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-*"
+        ]
+      },
+      {
+        Sid    = "TerminateSession"
+        Effect = "Allow"
+        Action = [
+          "ssm:TerminateSession"
+        ]
+        Resource = "*"
+        Condition = {
+          StringLike = {
+            "ssm:resourceTag/aws:ssmmessages:session-id" = [
+              "$${aws:userid}"
+            ]
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(
+    {
+      Name = "${var.iam_role_name}-fleet-manager-admin"
+    },
+    var.tags
+  )
+}
+
+# Fleet Manager IAM Policy for Read-Only Access
+resource "aws_iam_policy" "fleet_manager_readonly" {
+  count       = var.enable_fleet_manager && var.fleet_manager_access_level == "readonly" ? 1 : 0
+  name        = "${var.iam_role_name}-fleet-manager-readonly"
+  path        = "/"
+  description = "Fleet Manager read-only access policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EC2"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:DescribeTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "General"
+        Effect = "Allow"
+        Action = [
+          "ssm:DescribeInstanceAssociationsStatus",
+          "ssm:DescribeInstancePatches",
+          "ssm:DescribeInstancePatchStates",
+          "ssm:DescribeInstanceProperties",
+          "ssm:GetCommandInvocation",
+          "ssm:GetServiceSetting",
+          "ssm:GetInventorySchema",
+          "ssm:ListComplianceItems",
+          "ssm:ListInventoryEntries",
+          "ssm:ListTagsForResource",
+          "ssm:ListCommandInvocations",
+          "ssm:ListAssociations"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "SendCommand"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetDocument",
+          "ssm:SendCommand",
+          "ssm:StartSession"
+        ]
+        Resource = [
+          "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
+          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:managed-instance/*",
+          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:document/SSM-SessionManagerRunShell",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetDiskInformation",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetFileContent",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetFileSystemContent",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetGroups",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetPerformanceCounters",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetProcessDetails",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetUsers",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetWindowsEvents",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetWindowsRegistryContent"
+        ]
+      },
+      {
+        Sid    = "TerminateSession"
+        Effect = "Allow"
+        Action = [
+          "ssm:TerminateSession"
+        ]
+        Resource = "*"
+        Condition = {
+          StringLike = {
+            "ssm:resourceTag/aws:ssmmessages:session-id" = [
+              "$${aws:userid}"
+            ]
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(
+    {
+      Name = "${var.iam_role_name}-fleet-manager-readonly"
+    },
+    var.tags
+  )
+}
+
+# Attach Fleet Manager policies to the IAM role
+resource "aws_iam_role_policy_attachment" "fleet_manager_admin" {
+  count      = var.enable_fleet_manager && var.fleet_manager_access_level == "admin" ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = aws_iam_policy.fleet_manager_admin[0].arn
+}
+
+resource "aws_iam_role_policy_attachment" "fleet_manager_readonly" {
+  count      = var.enable_fleet_manager && var.fleet_manager_access_level == "readonly" ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = aws_iam_policy.fleet_manager_readonly[0].arn
+}
+
+# Session Manager logging permissions
+resource "aws_iam_policy" "session_manager_logging" {
+  count       = var.enable_session_manager && (var.session_manager_s3_bucket != null || var.session_manager_cloudwatch_log_group != null) ? 1 : 0
+  name        = "${var.iam_role_name}-session-manager-logging"
+  path        = "/"
+  description = "Session Manager logging permissions"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = concat(
+      var.session_manager_s3_bucket != null ? [
+        {
+          Effect = "Allow"
+          Action = [
+            "s3:PutObject",
+            "s3:GetEncryptionConfiguration"
+          ]
+          Resource = [
+            "arn:aws:s3:::${var.session_manager_s3_bucket}/*"
+          ]
+        }
+      ] : [],
+      var.session_manager_cloudwatch_log_group != null ? [
+        {
+          Effect = "Allow"
+          Action = [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
+            "logs:DescribeLogGroups",
+            "logs:DescribeLogStreams"
+          ]
+          Resource = [
+            "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:${var.session_manager_cloudwatch_log_group}:*"
+          ]
+        }
+      ] : []
+    )
+  })
+
+  tags = merge(
+    {
+      Name = "${var.iam_role_name}-session-manager-logging"
+    },
+    var.tags
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "session_manager_logging" {
+  count      = var.enable_session_manager && (var.session_manager_s3_bucket != null || var.session_manager_cloudwatch_log_group != null) ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = aws_iam_policy.session_manager_logging[0].arn
+}
+
+# Enhanced Session Manager permissions policy
+resource "aws_iam_policy" "session_manager_enhanced" {
+  count       = var.enable_session_manager_permissions ? 1 : 0
+  name        = "${var.iam_role_name}-session-manager-enhanced"
+  path        = "/"
+  description = "Enhanced Session Manager permissions for ssmmessages and S3 access"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetEncryptionConfiguration"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = merge(
+    {
+      Name = "${var.iam_role_name}-session-manager-enhanced"
+    },
+    var.tags
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "session_manager_enhanced" {
+  count      = var.enable_session_manager_permissions ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = aws_iam_policy.session_manager_enhanced[0].arn
 }
 
 
@@ -576,6 +854,86 @@ resource "aws_security_group" "vpc_endpoint" {
 }
 
 # =============================================================================
+# ADDITIONAL VPC ENDPOINTS FOR COMPLETE SSM FUNCTIONALITY IN PRIVATE SUBNETS
+# =============================================================================
+
+# S3 Gateway VPC Endpoint (for Session Manager S3 logging)
+resource "aws_vpc_endpoint" "s3" {
+  count             = var.create_s3_vpc_endpoint ? 1 : 0
+  vpc_id            = data.aws_vpc.selected.id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = var.s3_vpc_endpoint_route_table_ids
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-s3-endpoint"
+    },
+    var.tags
+  )
+}
+
+# KMS Interface VPC Endpoint (for Session Manager encryption)
+resource "aws_vpc_endpoint" "kms" {
+  count               = var.create_kms_vpc_endpoint ? 1 : 0
+  vpc_id              = data.aws_vpc.selected.id
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.kms"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
+  private_dns_enabled = var.enable_private_dns
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-kms-endpoint"
+    },
+    var.tags
+  )
+
+  depends_on = [aws_security_group.vpc_endpoint]
+}
+
+# CloudWatch Logs Interface VPC Endpoint (for Session Manager CloudWatch logging)
+resource "aws_vpc_endpoint" "logs" {
+  count               = var.create_logs_vpc_endpoint ? 1 : 0
+  vpc_id              = data.aws_vpc.selected.id
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.logs"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
+  private_dns_enabled = var.enable_private_dns
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-logs-endpoint"
+    },
+    var.tags
+  )
+
+  depends_on = [aws_security_group.vpc_endpoint]
+}
+
+# CloudWatch Monitoring Interface VPC Endpoint (for CloudWatch metrics)
+resource "aws_vpc_endpoint" "monitoring" {
+  count               = var.create_monitoring_vpc_endpoint ? 1 : 0
+  vpc_id              = data.aws_vpc.selected.id
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.monitoring"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
+  private_dns_enabled = var.enable_private_dns
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-monitoring-endpoint"
+    },
+    var.tags
+  )
+
+  depends_on = [aws_security_group.vpc_endpoint]
+}
+
+# =============================================================================
 # CLOUDWATCH AGENT CONFIGURATION (OPTIONAL)
 # =============================================================================
 
@@ -737,5 +1095,46 @@ resource "aws_ssm_association" "configure_agent" {
   }
 
   depends_on = [aws_instance.this, aws_ssm_association.install_agent]
+}
+
+# =============================================================================
+# KEY PAIR CREATION FOR WINDOWS INSTANCES
+# =============================================================================
+
+# Generate a private key if key pair creation is requested and no public key provided
+resource "tls_private_key" "this" {
+  count     = var.create_key_pair && var.public_key == null ? 1 : 0
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+# Create the key pair
+resource "aws_key_pair" "this" {
+  count      = var.create_key_pair ? 1 : 0
+  key_name   = var.key_pair_name != null ? var.key_pair_name : "${var.instance_name}-key"
+  public_key = var.public_key != null ? var.public_key : tls_private_key.this[0].public_key_openssh
+
+  tags = merge(
+    {
+      Name = var.key_pair_name != null ? var.key_pair_name : "${var.instance_name}-key"
+    },
+    var.tags
+  )
+}
+
+# Store the private key in SSM Parameter Store if key generation was requested
+resource "aws_ssm_parameter" "private_key" {
+  count       = var.create_key_pair && var.public_key == null && var.save_private_key ? 1 : 0
+  name        = "/ec2/keypair/${aws_key_pair.this[0].key_name}/private_key"
+  type        = "SecureString"
+  value       = tls_private_key.this[0].private_key_pem
+  description = "Private key for EC2 key pair ${aws_key_pair.this[0].key_name}"
+
+  tags = merge(
+    {
+      Name = "${aws_key_pair.this[0].key_name}-private-key"
+    },
+    var.tags
+  )
 }
 

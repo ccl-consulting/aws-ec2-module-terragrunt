@@ -303,3 +303,198 @@ variable "nat_gateway_allocation_id" {
   type        = string
   default     = null
 }
+
+# =============================================================================
+# FLEET MANAGER AND ENHANCED SSM VARIABLES
+# =============================================================================
+
+variable "enable_fleet_manager" {
+  description = "Whether to enable Fleet Manager capabilities with enhanced IAM permissions"
+  type        = bool
+  default     = false
+}
+
+variable "fleet_manager_access_level" {
+  description = "Fleet Manager access level: 'admin' for full access, 'readonly' for read-only access"
+  type        = string
+  default     = "readonly"
+  validation {
+    condition     = contains(["admin", "readonly"], var.fleet_manager_access_level)
+    error_message = "Fleet Manager access level must be either 'admin' or 'readonly'."
+  }
+}
+
+variable "enable_session_manager" {
+  description = "Whether to enable Session Manager for browser-based shell access"
+  type        = bool
+  default     = true
+}
+
+variable "session_manager_s3_bucket" {
+  description = "S3 bucket name for Session Manager logs (optional)"
+  type        = string
+  default     = null
+}
+
+variable "session_manager_s3_key_prefix" {
+  description = "S3 key prefix for Session Manager logs"
+  type        = string
+  default     = "session-manager-logs/"
+}
+
+variable "session_manager_cloudwatch_log_group" {
+  description = "CloudWatch log group name for Session Manager logs (optional)"
+  type        = string
+  default     = null
+}
+
+variable "enable_patch_manager" {
+  description = "Whether to enable Patch Manager for automated patching"
+  type        = bool
+  default     = false
+}
+
+variable "patch_group" {
+  description = "Patch group name for Patch Manager"
+  type        = string
+  default     = "default"
+}
+
+variable "enable_compliance" {
+  description = "Whether to enable Systems Manager Compliance"
+  type        = bool
+  default     = false
+}
+
+variable "enable_inventory" {
+  description = "Whether to enable Systems Manager Inventory collection"
+  type        = bool
+  default     = true
+}
+
+variable "inventory_schedule" {
+  description = "Cron expression for inventory collection schedule"
+  type        = string
+  default     = "rate(30 days)"
+}
+
+variable "enable_association_compliance_severity" {
+  description = "Compliance severity level for associations"
+  type        = string
+  default     = "UNSPECIFIED"
+  validation {
+    condition     = contains(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL", "UNSPECIFIED"], var.enable_association_compliance_severity)
+    error_message = "Compliance severity must be one of: CRITICAL, HIGH, MEDIUM, LOW, INFORMATIONAL, UNSPECIFIED."
+  }
+}
+
+variable "custom_ssm_documents" {
+  description = "List of custom SSM documents to create for this instance"
+  type = list(object({
+    name            = string
+    document_type   = string
+    document_format = string
+    content         = string
+    tags            = optional(map(string), {})
+  }))
+  default = []
+}
+
+variable "ssm_associations" {
+  description = "List of SSM associations to create for this instance"
+  type = list(object({
+    name                        = string
+    schedule_expression         = optional(string)
+    parameters                  = optional(map(string), {})
+    compliance_severity         = optional(string, "UNSPECIFIED")
+    max_concurrency             = optional(string, "1")
+    max_errors                  = optional(string, "0")
+    apply_only_at_cron_interval = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "enable_default_host_management" {
+  description = "Whether to enable Default Host Management Configuration for EC2 instances"
+  type        = bool
+  default     = false
+}
+
+# =============================================================================
+# SESSION MANAGER ENHANCED PERMISSIONS
+# =============================================================================
+
+variable "enable_session_manager_permissions" {
+  description = "Whether to add enhanced Session Manager permissions for ssmmessages and S3 access"
+  type        = bool
+  default     = true
+}
+
+# =============================================================================
+# KEY PAIR CREATION FOR WINDOWS INSTANCES
+# =============================================================================
+
+variable "create_key_pair" {
+  description = "Whether to create a new key pair for the instance (required for Windows password retrieval)"
+  type        = bool
+  default     = false
+}
+
+variable "key_pair_name" {
+  description = "Name for the created key pair. If not provided, will use instance_name-key"
+  type        = string
+  default     = null
+}
+
+variable "public_key" {
+  description = "Public key material to use for key pair creation. If not provided, a key pair will be generated"
+  type        = string
+  default     = null
+  sensitive   = false
+}
+
+variable "save_private_key" {
+  description = "Whether to save the generated private key to SSM Parameter Store (only when generating key pair)"
+  type        = bool
+  default     = true
+}
+
+# =============================================================================
+# ADDITIONAL VPC ENDPOINTS FOR COMPLETE SSM FUNCTIONALITY
+# =============================================================================
+
+variable "create_s3_vpc_endpoint" {
+  description = "Whether to create S3 VPC endpoint for Session Manager S3 logging"
+  type        = bool
+  default     = false
+}
+
+variable "create_kms_vpc_endpoint" {
+  description = "Whether to create KMS VPC endpoint for Session Manager encryption"
+  type        = bool
+  default     = false
+}
+
+variable "create_logs_vpc_endpoint" {
+  description = "Whether to create CloudWatch Logs VPC endpoint for Session Manager logging"
+  type        = bool
+  default     = false
+}
+
+variable "create_monitoring_vpc_endpoint" {
+  description = "Whether to create CloudWatch Monitoring VPC endpoint for metrics"
+  type        = bool
+  default     = false
+}
+
+variable "enable_private_dns" {
+  description = "Whether to enable private DNS resolution for VPC endpoints"
+  type        = bool
+  default     = true
+}
+
+variable "s3_vpc_endpoint_route_table_ids" {
+  description = "Route table IDs for S3 gateway VPC endpoint (required if create_s3_vpc_endpoint is true)"
+  type        = list(string)
+  default     = null
+}

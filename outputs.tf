@@ -252,3 +252,153 @@ output "vpc_endpoints_reused" {
     local.existing_ssmmessages_endpoint_exists
   ) : false
 }
+
+# =============================================================================
+# FLEET MANAGER OUTPUTS
+# =============================================================================
+
+output "fleet_manager_enabled" {
+  description = "Whether Fleet Manager is enabled for this instance"
+  value       = var.enable_fleet_manager
+}
+
+output "fleet_manager_access_level" {
+  description = "Fleet Manager access level (admin or readonly)"
+  value       = var.enable_fleet_manager ? var.fleet_manager_access_level : null
+}
+
+output "session_manager_enabled" {
+  description = "Whether Session Manager is enabled for this instance"
+  value       = var.enable_session_manager
+}
+
+output "fleet_manager_policy_arn" {
+  description = "ARN of the Fleet Manager IAM policy attached to the instance"
+  value = var.enable_fleet_manager ? (
+    var.fleet_manager_access_level == "admin" ?
+    try(aws_iam_policy.fleet_manager_admin[0].arn, null) :
+    try(aws_iam_policy.fleet_manager_readonly[0].arn, null)
+  ) : null
+}
+
+output "session_manager_logging_policy_arn" {
+  description = "ARN of the Session Manager logging IAM policy (if configured)"
+  value       = var.enable_session_manager && (var.session_manager_s3_bucket != null || var.session_manager_cloudwatch_log_group != null) ? try(aws_iam_policy.session_manager_logging[0].arn, null) : null
+}
+
+# =============================================================================
+# ENHANCED SSM OUTPUTS
+# =============================================================================
+
+output "patch_manager_enabled" {
+  description = "Whether Patch Manager is enabled for this instance"
+  value       = var.enable_patch_manager
+}
+
+output "patch_group" {
+  description = "Patch group assigned to this instance"
+  value       = var.enable_patch_manager ? var.patch_group : null
+}
+
+output "compliance_enabled" {
+  description = "Whether Systems Manager Compliance is enabled"
+  value       = var.enable_compliance
+}
+
+output "inventory_enabled" {
+  description = "Whether Systems Manager Inventory is enabled"
+  value       = var.enable_inventory
+}
+
+output "inventory_schedule" {
+  description = "Inventory collection schedule"
+  value       = var.enable_inventory ? var.inventory_schedule : null
+}
+
+output "default_host_management_enabled" {
+  description = "Whether Default Host Management Configuration is enabled"
+  value       = var.enable_default_host_management
+}
+
+# =============================================================================
+# KEY PAIR OUTPUTS
+# =============================================================================
+
+output "key_pair_created" {
+  description = "Whether a key pair was created by this module"
+  value       = var.create_key_pair
+}
+
+output "key_pair_name" {
+  description = "Name of the key pair used by the instance"
+  value       = var.create_key_pair ? aws_key_pair.this[0].key_name : var.key_name
+}
+
+output "key_pair_id" {
+  description = "ID of the created key pair (if created)"
+  value       = var.create_key_pair ? aws_key_pair.this[0].key_pair_id : null
+}
+
+output "key_pair_arn" {
+  description = "ARN of the created key pair (if created)"
+  value       = var.create_key_pair ? aws_key_pair.this[0].arn : null
+}
+
+output "key_pair_fingerprint" {
+  description = "Fingerprint of the created key pair (if created)"
+  value       = var.create_key_pair ? aws_key_pair.this[0].fingerprint : null
+}
+
+output "private_key_ssm_parameter" {
+  description = "SSM Parameter Store path where private key is stored (if generated and stored)"
+  value       = var.create_key_pair && var.public_key == null && var.save_private_key ? aws_ssm_parameter.private_key[0].name : null
+}
+
+output "private_key_pem" {
+  description = "Private key in PEM format (only available when key is generated, not when using existing public key)"
+  value       = var.create_key_pair && var.public_key == null ? tls_private_key.this[0].private_key_pem : null
+  sensitive   = true
+}
+
+output "public_key_openssh" {
+  description = "Public key in OpenSSH format"
+  value       = var.create_key_pair ? (var.public_key != null ? var.public_key : tls_private_key.this[0].public_key_openssh) : null
+}
+
+# =============================================================================
+# SESSION MANAGER ENHANCED OUTPUTS
+# =============================================================================
+
+output "session_manager_permissions_enabled" {
+  description = "Whether enhanced Session Manager permissions are enabled"
+  value       = var.enable_session_manager_permissions
+}
+
+output "session_manager_enhanced_policy_arn" {
+  description = "ARN of the enhanced Session Manager IAM policy (if enabled)"
+  value       = var.enable_session_manager_permissions ? aws_iam_policy.session_manager_enhanced[0].arn : null
+}
+
+# =============================================================================
+# ADDITIONAL VPC ENDPOINT OUTPUTS
+# =============================================================================
+
+output "s3_vpc_endpoint_id" {
+  description = "ID of the S3 Gateway VPC endpoint (if created)"
+  value       = var.create_s3_vpc_endpoint ? aws_vpc_endpoint.s3[0].id : null
+}
+
+output "kms_vpc_endpoint_id" {
+  description = "ID of the KMS Interface VPC endpoint (if created)"
+  value       = var.create_kms_vpc_endpoint ? aws_vpc_endpoint.kms[0].id : null
+}
+
+output "logs_vpc_endpoint_id" {
+  description = "ID of the CloudWatch Logs Interface VPC endpoint (if created)"
+  value       = var.create_logs_vpc_endpoint ? aws_vpc_endpoint.logs[0].id : null
+}
+
+output "monitoring_vpc_endpoint_id" {
+  description = "ID of the CloudWatch Monitoring Interface VPC endpoint (if created)"
+  value       = var.create_monitoring_vpc_endpoint ? aws_vpc_endpoint.monitoring[0].id : null
+}
