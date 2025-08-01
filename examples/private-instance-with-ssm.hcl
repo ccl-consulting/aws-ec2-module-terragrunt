@@ -46,6 +46,22 @@ inputs = {
   # Optional: Specify different subnets for VPC endpoints
   # vpc_endpoint_subnet_ids = ["subnet-endpoint1", "subnet-endpoint2"]
 
+  # Enable Fleet Manager and SSM capabilities
+  enable_fleet_manager = true
+  fleet_manager_access_level = "admin" # Change to "readonly" if needed
+  enable_session_manager = true
+
+  # Configure logging for Session Manager
+  session_manager_s3_bucket = "my-ssm-logs" # Specify your S3 bucket name
+  session_manager_cloudwatch_log_group = "/aws/ssm/SessionManager"
+
+  # Additional configurations
+  enable_patch_manager = true
+  patch_group = "prod-patch-group"
+  enable_compliance = true
+  enable_inventory = true
+  inventory_schedule = "rate(30 days)"
+
   # Security Configuration
   custom_ingress_rules = [
     {
@@ -56,7 +72,6 @@ inputs = {
       description = "SSH from VPC"
     }
   ]
-
   # Restrict egress - only necessary outbound traffic for VPC endpoints
   restrict_egress = true
   custom_egress_rules = [

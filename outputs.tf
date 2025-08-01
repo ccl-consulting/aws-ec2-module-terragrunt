@@ -252,3 +252,71 @@ output "vpc_endpoints_reused" {
     local.existing_ssmmessages_endpoint_exists
   ) : false
 }
+
+# =============================================================================
+# FLEET MANAGER OUTPUTS
+# =============================================================================
+
+output "fleet_manager_enabled" {
+  description = "Whether Fleet Manager is enabled for this instance"
+  value       = var.enable_fleet_manager
+}
+
+output "fleet_manager_access_level" {
+  description = "Fleet Manager access level (admin or readonly)"
+  value       = var.enable_fleet_manager ? var.fleet_manager_access_level : null
+}
+
+output "session_manager_enabled" {
+  description = "Whether Session Manager is enabled for this instance"
+  value       = var.enable_session_manager
+}
+
+output "fleet_manager_policy_arn" {
+  description = "ARN of the Fleet Manager IAM policy attached to the instance"
+  value = var.enable_fleet_manager ? (
+    var.fleet_manager_access_level == "admin" ?
+    try(aws_iam_policy.fleet_manager_admin[0].arn, null) :
+    try(aws_iam_policy.fleet_manager_readonly[0].arn, null)
+  ) : null
+}
+
+output "session_manager_logging_policy_arn" {
+  description = "ARN of the Session Manager logging IAM policy (if configured)"
+  value = var.enable_session_manager && (var.session_manager_s3_bucket != null || var.session_manager_cloudwatch_log_group != null) ?
+    try(aws_iam_policy.session_manager_logging[0].arn, null) : null
+}
+
+# =============================================================================
+# ENHANCED SSM OUTPUTS
+# =============================================================================
+
+output "patch_manager_enabled" {
+  description = "Whether Patch Manager is enabled for this instance"
+  value       = var.enable_patch_manager
+}
+
+output "patch_group" {
+  description = "Patch group assigned to this instance"
+  value       = var.enable_patch_manager ? var.patch_group : null
+}
+
+output "compliance_enabled" {
+  description = "Whether Systems Manager Compliance is enabled"
+  value       = var.enable_compliance
+}
+
+output "inventory_enabled" {
+  description = "Whether Systems Manager Inventory is enabled"
+  value       = var.enable_inventory
+}
+
+output "inventory_schedule" {
+  description = "Inventory collection schedule"
+  value       = var.enable_inventory ? var.inventory_schedule : null
+}
+
+output "default_host_management_enabled" {
+  description = "Whether Default Host Management Configuration is enabled"
+  value       = var.enable_default_host_management
+}

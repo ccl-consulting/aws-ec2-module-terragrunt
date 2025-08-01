@@ -1,5 +1,5 @@
 terraform {
-  backend "s3" {}
+  # backend "s3" {}
 }
 
 # =============================================================================
@@ -239,9 +239,6 @@ resource "aws_instance" "this" {
     },
     var.tags
   )
-  lifecycle {
-    replace_triggered_by = [local.user_data_with_ssm]
-  }
 
 }
 
@@ -320,6 +317,243 @@ resource "aws_iam_instance_profile" "ssm_profile" {
     },
     var.tags
   )
+}
+
+# Fleet Manager IAM Policy for Admin Access
+resource "aws_iam_policy" "fleet_manager_admin" {
+  count       = var.enable_fleet_manager && var.fleet_manager_access_level == "admin" ? 1 : 0
+  name        = "${var.iam_role_name}-fleet-manager-admin"
+  path        = "/"
+  description = "Fleet Manager administrator access policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EC2"
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateTags",
+          "ec2:DeleteTags",
+          "ec2:DescribeInstances",
+          "ec2:DescribeTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "General"
+        Effect = "Allow"
+        Action = [
+          "ssm:AddTagsToResource",
+          "ssm:DescribeInstanceAssociationsStatus",
+          "ssm:DescribeInstancePatches",
+          "ssm:DescribeInstancePatchStates",
+          "ssm:DescribeInstanceProperties",
+          "ssm:GetCommandInvocation",
+          "ssm:GetServiceSetting",
+          "ssm:GetInventorySchema",
+          "ssm:ListComplianceItems",
+          "ssm:ListInventoryEntries",
+          "ssm:ListTagsForResource",
+          "ssm:ListCommandInvocations",
+          "ssm:ListAssociations",
+          "ssm:RemoveTagsFromResource"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "SendCommand"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetDocument",
+          "ssm:SendCommand",
+          "ssm:StartSession"
+        ]
+        Resource = [
+          "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
+          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:managed-instance/*",
+          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:document/SSM-SessionManagerRunShell",
+          "arn:aws:ssm:*:*:document/AWS-PasswordReset",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-*"
+        ]
+      },
+      {
+        Sid    = "TerminateSession"
+        Effect = "Allow"
+        Action = [
+          "ssm:TerminateSession"
+        ]
+        Resource = "*"
+        Condition = {
+          StringLike = {
+            "ssm:resourceTag/aws:ssmmessages:session-id" = [
+              "${aws:userid}"
+            ]
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(
+    {
+      Name = "${var.iam_role_name}-fleet-manager-admin"
+    },
+    var.tags
+  )
+}
+
+# Fleet Manager IAM Policy for Read-Only Access
+resource "aws_iam_policy" "fleet_manager_readonly" {
+  count       = var.enable_fleet_manager && var.fleet_manager_access_level == "readonly" ? 1 : 0
+  name        = "${var.iam_role_name}-fleet-manager-readonly"
+  path        = "/"
+  description = "Fleet Manager read-only access policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EC2"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:DescribeTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "General"
+        Effect = "Allow"
+        Action = [
+          "ssm:DescribeInstanceAssociationsStatus",
+          "ssm:DescribeInstancePatches",
+          "ssm:DescribeInstancePatchStates",
+          "ssm:DescribeInstanceProperties",
+          "ssm:GetCommandInvocation",
+          "ssm:GetServiceSetting",
+          "ssm:GetInventorySchema",
+          "ssm:ListComplianceItems",
+          "ssm:ListInventoryEntries",
+          "ssm:ListTagsForResource",
+          "ssm:ListCommandInvocations",
+          "ssm:ListAssociations"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "SendCommand"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetDocument",
+          "ssm:SendCommand",
+          "ssm:StartSession"
+        ]
+        Resource = [
+          "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
+          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:managed-instance/*",
+          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:document/SSM-SessionManagerRunShell",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetDiskInformation",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetFileContent",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetFileSystemContent",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetGroups",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetPerformanceCounters",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetProcessDetails",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetUsers",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetWindowsEvents",
+          "arn:aws:ssm:*:*:document/AWSFleetManager-GetWindowsRegistryContent"
+        ]
+      },
+      {
+        Sid    = "TerminateSession"
+        Effect = "Allow"
+        Action = [
+          "ssm:TerminateSession"
+        ]
+        Resource = "*"
+        Condition = {
+          StringLike = {
+            "ssm:resourceTag/aws:ssmmessages:session-id" = [
+              "${aws:userid}"
+            ]
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(
+    {
+      Name = "${var.iam_role_name}-fleet-manager-readonly"
+    },
+    var.tags
+  )
+}
+
+# Attach Fleet Manager policies to the IAM role
+resource "aws_iam_role_policy_attachment" "fleet_manager_admin" {
+  count      = var.enable_fleet_manager && var.fleet_manager_access_level == "admin" ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = aws_iam_policy.fleet_manager_admin[0].arn
+}
+
+resource "aws_iam_role_policy_attachment" "fleet_manager_readonly" {
+  count      = var.enable_fleet_manager && var.fleet_manager_access_level == "readonly" ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = aws_iam_policy.fleet_manager_readonly[0].arn
+}
+
+# Session Manager logging permissions
+resource "aws_iam_policy" "session_manager_logging" {
+  count       = var.enable_session_manager && (var.session_manager_s3_bucket != null || var.session_manager_cloudwatch_log_group != null) ? 1 : 0
+  name        = "${var.iam_role_name}-session-manager-logging"
+  path        = "/"
+  description = "Session Manager logging permissions"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = concat(
+      var.session_manager_s3_bucket != null ? [
+        {
+          Effect = "Allow"
+          Action = [
+            "s3:PutObject",
+            "s3:GetEncryptionConfiguration"
+          ]
+          Resource = [
+            "arn:aws:s3:::${var.session_manager_s3_bucket}/*"
+          ]
+        }
+      ] : [],
+      var.session_manager_cloudwatch_log_group != null ? [
+        {
+          Effect = "Allow"
+          Action = [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
+            "logs:DescribeLogGroups",
+            "logs:DescribeLogStreams"
+          ]
+          Resource = [
+            "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:${var.session_manager_cloudwatch_log_group}:*"
+          ]
+        }
+      ] : []
+    )
+  })
+
+  tags = merge(
+    {
+      Name = "${var.iam_role_name}-session-manager-logging"
+    },
+    var.tags
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "session_manager_logging" {
+  count      = var.enable_session_manager && (var.session_manager_s3_bucket != null || var.session_manager_cloudwatch_log_group != null) ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = aws_iam_policy.session_manager_logging[0].arn
 }
 
 

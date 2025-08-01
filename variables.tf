@@ -303,3 +303,119 @@ variable "nat_gateway_allocation_id" {
   type        = string
   default     = null
 }
+
+# =============================================================================
+# FLEET MANAGER AND ENHANCED SSM VARIABLES
+# =============================================================================
+
+variable "enable_fleet_manager" {
+  description = "Whether to enable Fleet Manager capabilities with enhanced IAM permissions"
+  type        = bool
+  default     = false
+}
+
+variable "fleet_manager_access_level" {
+  description = "Fleet Manager access level: 'admin' for full access, 'readonly' for read-only access"
+  type        = string
+  default     = "readonly"
+  validation {
+    condition     = contains(["admin", "readonly"], var.fleet_manager_access_level)
+    error_message = "Fleet Manager access level must be either 'admin' or 'readonly'."
+  }
+}
+
+variable "enable_session_manager" {
+  description = "Whether to enable Session Manager for browser-based shell access"
+  type        = bool
+  default     = true
+}
+
+variable "session_manager_s3_bucket" {
+  description = "S3 bucket name for Session Manager logs (optional)"
+  type        = string
+  default     = null
+}
+
+variable "session_manager_s3_key_prefix" {
+  description = "S3 key prefix for Session Manager logs"
+  type        = string
+  default     = "session-manager-logs/"
+}
+
+variable "session_manager_cloudwatch_log_group" {
+  description = "CloudWatch log group name for Session Manager logs (optional)"
+  type        = string
+  default     = null
+}
+
+variable "enable_patch_manager" {
+  description = "Whether to enable Patch Manager for automated patching"
+  type        = bool
+  default     = false
+}
+
+variable "patch_group" {
+  description = "Patch group name for Patch Manager"
+  type        = string
+  default     = "default"
+}
+
+variable "enable_compliance" {
+  description = "Whether to enable Systems Manager Compliance"
+  type        = bool
+  default     = false
+}
+
+variable "enable_inventory" {
+  description = "Whether to enable Systems Manager Inventory collection"
+  type        = bool
+  default     = true
+}
+
+variable "inventory_schedule" {
+  description = "Cron expression for inventory collection schedule"
+  type        = string
+  default     = "rate(30 days)"
+}
+
+variable "enable_association_compliance_severity" {
+  description = "Compliance severity level for associations"
+  type        = string
+  default     = "UNSPECIFIED"
+  validation {
+    condition     = contains(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL", "UNSPECIFIED"], var.enable_association_compliance_severity)
+    error_message = "Compliance severity must be one of: CRITICAL, HIGH, MEDIUM, LOW, INFORMATIONAL, UNSPECIFIED."
+  }
+}
+
+variable "custom_ssm_documents" {
+  description = "List of custom SSM documents to create for this instance"
+  type = list(object({
+    name            = string
+    document_type   = string
+    document_format = string
+    content         = string
+    tags            = optional(map(string), {})
+  }))
+  default = []
+}
+
+variable "ssm_associations" {
+  description = "List of SSM associations to create for this instance"
+  type = list(object({
+    name                        = string
+    schedule_expression         = optional(string)
+    parameters                  = optional(map(string), {})
+    compliance_severity         = optional(string, "UNSPECIFIED")
+    max_concurrency            = optional(string, "1")
+    max_errors                 = optional(string, "0")
+    apply_only_at_cron_interval = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "enable_default_host_management" {
+  description = "Whether to enable Default Host Management Configuration for EC2 instances"
+  type        = bool
+  default     = false
+}
