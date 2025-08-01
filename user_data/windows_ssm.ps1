@@ -145,7 +145,7 @@ try {
             
             # Get SSM Agent version if possible
             try {
-                $SSMAgentPath = "${env:ProgramFiles}\Amazon\SSM\amazon-ssm-agent.exe"
+                $SSMAgentPath = "$${env:ProgramFiles}\Amazon\SSM\amazon-ssm-agent.exe"
                 if (Test-Path $SSMAgentPath) {
                     $VersionInfo = (Get-Item $SSMAgentPath).VersionInfo
                     Write-Log "SSM Agent version: $($VersionInfo.ProductVersion)"
