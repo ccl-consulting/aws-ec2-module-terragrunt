@@ -109,6 +109,18 @@ locals {
 
   # Determine NAT Gateway ID to use - prefer created NAT Gateway over provided ID
   nat_gateway_id = var.create_nat_gateway ? aws_nat_gateway.this[0].id : var.nat_gateway_id
+
+  # VPC endpoint existence checks
+  existing_ssm_endpoint_exists         = var.create_vpc_endpoints ? length(data.aws_vpc_endpoints.existing_ssm[0].ids) > 0 : false
+  existing_ec2messages_endpoint_exists = var.create_vpc_endpoints ? length(data.aws_vpc_endpoints.existing_ec2messages[0].ids) > 0 : false
+  existing_ssmmessages_endpoint_exists = var.create_vpc_endpoints ? length(data.aws_vpc_endpoints.existing_ssmmessages[0].ids) > 0 : false
+  
+  # Determine if we need to create security group for VPC endpoints
+  create_vpc_endpoint_sg = var.create_vpc_endpoints && (
+    !local.existing_ssm_endpoint_exists || 
+    !local.existing_ec2messages_endpoint_exists || 
+    !local.existing_ssmmessages_endpoint_exists
+  )
 }
 
 # =============================================================================
@@ -365,25 +377,74 @@ resource "aws_route_table_association" "private" {
 # VPC ENDPOINTS FOR SSM
 # =============================================================================
 
-# Get VPC endpoint service data for SSM
+# Check for existing VPC endpoints in the VPC
+data "aws_vpc_endpoints" "existing_ssm" {
+  count = var.create_vpc_endpoints ? 1 : 0
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.selected.id]
+  }
+  filter {
+    name   = "service-name"
+    values = ["com.amazonaws.${data.aws_region.current.name}.ssm"]
+  }
+  filter {
+    name   = "vpc-endpoint-type"
+    values = ["Interface"]
+  }
+}
+
+data "aws_vpc_endpoints" "existing_ec2messages" {
+  count = var.create_vpc_endpoints ? 1 : 0
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.selected.id]
+  }
+  filter {
+    name   = "service-name"
+    values = ["com.amazonaws.${data.aws_region.current.name}.ec2messages"]
+  }
+  filter {
+    name   = "vpc-endpoint-type"
+    values = ["Interface"]
+  }
+}
+
+data "aws_vpc_endpoints" "existing_ssmmessages" {
+  count = var.create_vpc_endpoints ? 1 : 0
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.selected.id]
+  }
+  filter {
+    name   = "service-name"
+    values = ["com.amazonaws.${data.aws_region.current.name}.ssmmessages"]
+  }
+  filter {
+    name   = "vpc-endpoint-type"
+    values = ["Interface"]
+  }
+}
+
+# Get VPC endpoint service data for SSM (only if we need to create endpoints)
 data "aws_vpc_endpoint_service" "ssm" {
-  count   = var.create_vpc_endpoints ? 1 : 0
+  count   = var.create_vpc_endpoints && length(data.aws_vpc_endpoints.existing_ssm[0].ids) == 0 ? 1 : 0
   service = "ssm"
 }
 
 data "aws_vpc_endpoint_service" "ec2messages" {
-  count   = var.create_vpc_endpoints ? 1 : 0
+  count   = var.create_vpc_endpoints && length(data.aws_vpc_endpoints.existing_ec2messages[0].ids) == 0 ? 1 : 0
   service = "ec2messages"
 }
 
 data "aws_vpc_endpoint_service" "ssmmessages" {
-  count   = var.create_vpc_endpoints ? 1 : 0
+  count   = var.create_vpc_endpoints && length(data.aws_vpc_endpoints.existing_ssmmessages[0].ids) == 0 ? 1 : 0
   service = "ssmmessages"
 }
 
 # SSM VPC Endpoint
 resource "aws_vpc_endpoint" "ssm" {
-  count              = var.create_vpc_endpoints ? 1 : 0
+  count              = var.create_vpc_endpoints && length(data.aws_vpc_endpoints.existing_ssm[0].ids) == 0 ? 1 : 0
   vpc_id             = data.aws_vpc.selected.id
   service_name       = data.aws_vpc_endpoint_service.ssm[0].service_name
   vpc_endpoint_type  = "Interface"
@@ -398,9 +459,9 @@ resource "aws_vpc_endpoint" "ssm" {
   )
 }
 
-# Additional endpoints for EC2Messages and SSMMessages
+# EC2Messages VPC Endpoint (only create if it doesn't exist)
 resource "aws_vpc_endpoint" "ec2messages" {
-  count              = var.create_vpc_endpoints ? 1 : 0
+  count              = var.create_vpc_endpoints && length(data.aws_vpc_endpoints.existing_ec2messages[0].ids) == 0 ? 1 : 0
   vpc_id             = data.aws_vpc.selected.id
   service_name       = data.aws_vpc_endpoint_service.ec2messages[0].service_name
   vpc_endpoint_type  = "Interface"
@@ -415,8 +476,9 @@ resource "aws_vpc_endpoint" "ec2messages" {
   )
 }
 
+# SSMMessages VPC Endpoint (only create if it doesn't exist)
 resource "aws_vpc_endpoint" "ssmmessages" {
-  count              = var.create_vpc_endpoints ? 1 : 0
+  count              = var.create_vpc_endpoints && length(data.aws_vpc_endpoints.existing_ssmmessages[0].ids) == 0 ? 1 : 0
   vpc_id             = data.aws_vpc.selected.id
   service_name       = data.aws_vpc_endpoint_service.ssmmessages[0].service_name
   vpc_endpoint_type  = "Interface"
@@ -431,9 +493,9 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   )
 }
 
-# Security group for VPC endpoints
+# Security group for VPC endpoints (only create if we need new endpoints)
 resource "aws_security_group" "vpc_endpoint" {
-  count       = var.create_vpc_endpoints ? 1 : 0
+  count       = local.create_vpc_endpoint_sg ? 1 : 0
   name        = "${var.instance_name}-vpc-endpoints-sg"
   description = "Security group for VPC endpoints"
   vpc_id      = data.aws_vpc.selected.id

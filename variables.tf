@@ -238,7 +238,30 @@ variable "create_vpc_endpoints" {
   type        = bool
   default     = true
 }
+# New variables to add to the module
+variable "vpc_endpoint_ssm_id" {
+  description = "Existing SSM VPC endpoint ID to use (optional)"
+  type        = string
+  default     = null
+}
 
+variable "vpc_endpoint_ec2messages_id" {
+  description = "Existing EC2Messages VPC endpoint ID to use (optional)"
+  type        = string
+  default     = null
+}
+
+variable "vpc_endpoint_ssmmessages_id" {
+  description = "Existing SSMMessages VPC endpoint ID to use (optional)"
+  type        = string
+  default     = null
+}
+
+variable "create_shared_vpc_endpoints" {
+  description = "Create VPC endpoints (only set to true for one instance per VPC)"
+  type        = bool
+  default     = false
+}
 variable "vpc_endpoint_subnet_ids" {
   description = "Subnet IDs for VPC endpoints (defaults to instance subnet)"
   type        = list(string)
