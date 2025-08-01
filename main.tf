@@ -1,5 +1,5 @@
 terraform {
-  # backend "s3" {}
+  backend "s3" {}
 }
 
 # =============================================================================
@@ -112,13 +112,13 @@ locals {
 
   # VPC endpoint existence checks (only valid when checking is enabled)
   existing_ssm_endpoint_exists = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? (
-    length(data.aws_vpc_endpoint.existing_ssm[0].ids) > 0
+    data.aws_vpc_endpoint.existing_ssm[0].id != null
   ) : false
   existing_ec2messages_endpoint_exists = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? (
-    length(data.aws_vpc_endpoint.existing_ec2messages[0].ids) > 0
+    data.aws_vpc_endpoint.existing_ec2messages[0].id != null
   ) : false
   existing_ssmmessages_endpoint_exists = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? (
-    length(data.aws_vpc_endpoint.existing_ssmmessages[0].ids) > 0
+    data.aws_vpc_endpoint.existing_ssmmessages[0].id != null
   ) : false
 
   # Determine if we need to create security group for VPC endpoints
@@ -437,21 +437,21 @@ data "aws_vpc_endpoint" "existing_ssmmessages" {
 # Get VPC endpoint service data for SSM (only if we need to create endpoints)
 data "aws_vpc_endpoint_service" "ssm" {
   count = var.create_vpc_endpoints && (
-    var.check_for_existing_vpc_endpoints ? length(data.aws_vpc_endpoint.existing_ssm[0].ids) == 0 : true
+    var.check_for_existing_vpc_endpoints ? !local.existing_ssm_endpoint_exists : true
   ) ? 1 : 0
   service = "ssm"
 }
 
 data "aws_vpc_endpoint_service" "ec2messages" {
   count = var.create_vpc_endpoints && (
-    var.check_for_existing_vpc_endpoints ? length(data.aws_vpc_endpoint.existing_ec2messages[0].ids) == 0 : true
+    var.check_for_existing_vpc_endpoints ? !local.existing_ec2messages_endpoint_exists : true
   ) ? 1 : 0
   service = "ec2messages"
 }
 
 data "aws_vpc_endpoint_service" "ssmmessages" {
   count = var.create_vpc_endpoints && (
-    var.check_for_existing_vpc_endpoints ? length(data.aws_vpc_endpoint.existing_ssmmessages[0].ids) == 0 : true
+    var.check_for_existing_vpc_endpoints ? !local.existing_ssmmessages_endpoint_exists : true
   ) ? 1 : 0
   service = "ssmmessages"
 }
@@ -459,7 +459,7 @@ data "aws_vpc_endpoint_service" "ssmmessages" {
 # SSM VPC Endpoint
 resource "aws_vpc_endpoint" "ssm" {
   count = var.create_vpc_endpoints && (
-    var.check_for_existing_vpc_endpoints ? length(data.aws_vpc_endpoint.existing_ssm[0].ids) == 0 : true
+    var.check_for_existing_vpc_endpoints ? !local.existing_ssm_endpoint_exists : true
   ) ? 1 : 0
   vpc_id             = data.aws_vpc.selected.id
   service_name       = data.aws_vpc_endpoint_service.ssm[0].service_name
@@ -478,7 +478,7 @@ resource "aws_vpc_endpoint" "ssm" {
 # EC2Messages VPC Endpoint (only create if it doesn't exist)
 resource "aws_vpc_endpoint" "ec2messages" {
   count = var.create_vpc_endpoints && (
-    var.check_for_existing_vpc_endpoints ? length(data.aws_vpc_endpoint.existing_ec2messages[0].ids) == 0 : true
+    var.check_for_existing_vpc_endpoints ? !local.existing_ec2messages_endpoint_exists : true
   ) ? 1 : 0
   vpc_id             = data.aws_vpc.selected.id
   service_name       = data.aws_vpc_endpoint_service.ec2messages[0].service_name
@@ -497,7 +497,7 @@ resource "aws_vpc_endpoint" "ec2messages" {
 # SSMMessages VPC Endpoint (only create if it doesn't exist)
 resource "aws_vpc_endpoint" "ssmmessages" {
   count = var.create_vpc_endpoints && (
-    var.check_for_existing_vpc_endpoints ? length(data.aws_vpc_endpoint.existing_ssmmessages[0].ids) == 0 : true
+    var.check_for_existing_vpc_endpoints ? !local.existing_ssmmessages_endpoint_exists : true
   ) ? 1 : 0
   vpc_id             = data.aws_vpc.selected.id
   service_name       = data.aws_vpc_endpoint_service.ssmmessages[0].service_name

@@ -208,47 +208,47 @@ output "private_route_table_association_id" {
 # VPC ENDPOINT OUTPUTS
 # =============================================================================
 
-output "existing_ssm_endpoint_ids" {
-  description = "IDs of existing SSM VPC endpoints found in the VPC"
-  value       = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? data.aws_vpc_endpoint.existing_ssm[0].ids : []
+output "existing_ssm_endpoint_id" {
+  description = "ID of existing SSM VPC endpoint found in the VPC"
+  value       = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? data.aws_vpc_endpoint.existing_ssm[0].id : null
 }
 
-output "existing_ec2messages_endpoint_ids" {
-  description = "IDs of existing EC2Messages VPC endpoints found in the VPC"
-  value       = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? data.aws_vpc_endpoint.existing_ec2messages[0].ids : []
+output "existing_ec2messages_endpoint_id" {
+  description = "ID of existing EC2Messages VPC endpoint found in the VPC"
+  value       = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? data.aws_vpc_endpoint.existing_ec2messages[0].id : null
 }
 
-output "existing_ssmmessages_endpoint_ids" {
-  description = "IDs of existing SSMMessages VPC endpoints found in the VPC"
-  value       = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? data.aws_vpc_endpoint.existing_ssmmessages[0].ids : []
+output "existing_ssmmessages_endpoint_id" {
+  description = "ID of existing SSMMessages VPC endpoint found in the VPC"
+  value       = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? data.aws_vpc_endpoint.existing_ssmmessages[0].id : null
 }
 
 output "created_ssm_endpoint_id" {
   description = "ID of the SSM VPC endpoint created by this module (if any)"
   value = var.create_vpc_endpoints && (
-    var.check_for_existing_vpc_endpoints ? length(data.aws_vpc_endpoint.existing_ssm[0].ids) == 0 : true
+    var.check_for_existing_vpc_endpoints ? !local.existing_ssm_endpoint_exists : true
   ) ? aws_vpc_endpoint.ssm[0].id : null
 }
 
 output "created_ec2messages_endpoint_id" {
   description = "ID of the EC2Messages VPC endpoint created by this module (if any)"
   value = var.create_vpc_endpoints && (
-    var.check_for_existing_vpc_endpoints ? length(data.aws_vpc_endpoint.existing_ec2messages[0].ids) == 0 : true
+    var.check_for_existing_vpc_endpoints ? !local.existing_ec2messages_endpoint_exists : true
   ) ? aws_vpc_endpoint.ec2messages[0].id : null
 }
 
 output "created_ssmmessages_endpoint_id" {
   description = "ID of the SSMMessages VPC endpoint created by this module (if any)"
   value = var.create_vpc_endpoints && (
-    var.check_for_existing_vpc_endpoints ? length(data.aws_vpc_endpoint.existing_ssmmessages[0].ids) == 0 : true
+    var.check_for_existing_vpc_endpoints ? !local.existing_ssmmessages_endpoint_exists : true
   ) ? aws_vpc_endpoint.ssmmessages[0].id : null
 }
 
 output "vpc_endpoints_reused" {
   description = "Boolean indicating if existing VPC endpoints were reused"
   value = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? (
-    length(data.aws_vpc_endpoint.existing_ssm[0].ids) > 0 ||
-    length(data.aws_vpc_endpoint.existing_ec2messages[0].ids) > 0 ||
-    length(data.aws_vpc_endpoint.existing_ssmmessages[0].ids) > 0
+    data.aws_vpc_endpoint.existing_ssm[0].id != null ||
+    data.aws_vpc_endpoint.existing_ec2messages[0].id != null ||
+    data.aws_vpc_endpoint.existing_ssmmessages[0].id != null
   ) : false
 }
