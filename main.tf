@@ -401,10 +401,7 @@ data "aws_vpc_endpoint" "existing_ssm" {
     name   = "vpc-endpoint-type"
     values = ["Interface"]
   }
-  filter {
-    name   = "state"
-    values = ["available"]
-  }
+  # Remove the state filter - it's invalid
 }
 
 data "aws_vpc_endpoint" "existing_ec2messages" {
@@ -422,10 +419,7 @@ data "aws_vpc_endpoint" "existing_ec2messages" {
     name   = "vpc-endpoint-type"
     values = ["Interface"]
   }
-  filter {
-    name   = "state"
-    values = ["available"]
-  }
+  # Remove the state filter - it's invalid
 }
 
 data "aws_vpc_endpoint" "existing_ssmmessages" {
@@ -443,10 +437,7 @@ data "aws_vpc_endpoint" "existing_ssmmessages" {
     name   = "vpc-endpoint-type"
     values = ["Interface"]
   }
-  filter {
-    name   = "state"
-    values = ["available"]
-  }
+  # Remove the state filter - it's invalid
 }
 
 # Get VPC endpoint service data for SSM (only if we need to create endpoints)
