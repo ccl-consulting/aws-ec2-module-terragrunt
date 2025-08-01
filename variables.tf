@@ -268,6 +268,12 @@ variable "vpc_endpoint_subnet_ids" {
   default     = null
 }
 
+variable "check_for_existing_vpc_endpoints" {
+  description = "Whether to check for existing VPC endpoints before creating new ones"
+  type        = bool
+  default     = true
+}
+
 variable "create_private_route_table" {
   description = "Whether to create a private route table for the subnet (removes internet gateway route)"
   type        = bool
