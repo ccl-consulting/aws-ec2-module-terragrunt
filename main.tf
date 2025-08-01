@@ -110,15 +110,15 @@ locals {
   # Determine NAT Gateway ID to use - prefer created NAT Gateway over provided ID
   nat_gateway_id = var.create_nat_gateway ? aws_nat_gateway.this[0].id : var.nat_gateway_id
 
-  # VPC endpoint existence checks (only valid when checking is enabled)
+  # VPC endpoint existence checks using try() to handle errors gracefully
   existing_ssm_endpoint_exists = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? (
-    data.aws_vpc_endpoint.existing_ssm[0].id != null
+    try(data.aws_vpc_endpoint.existing_ssm[0].id, null) != null
   ) : false
   existing_ec2messages_endpoint_exists = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? (
-    data.aws_vpc_endpoint.existing_ec2messages[0].id != null
+    try(data.aws_vpc_endpoint.existing_ec2messages[0].id, null) != null
   ) : false
   existing_ssmmessages_endpoint_exists = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? (
-    data.aws_vpc_endpoint.existing_ssmmessages[0].id != null
+    try(data.aws_vpc_endpoint.existing_ssmmessages[0].id, null) != null
   ) : false
 
   # Determine if we need to create security group for VPC endpoints
@@ -385,9 +385,10 @@ resource "aws_route_table_association" "private" {
 # VPC ENDPOINTS FOR SSM
 # =============================================================================
 
-# Check for existing VPC endpoints in the VPC
+# Check for existing VPC endpoints in the VPC - with error handling
 data "aws_vpc_endpoint" "existing_ssm" {
   count = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? 1 : 0
+  
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.selected.id]
@@ -400,10 +401,15 @@ data "aws_vpc_endpoint" "existing_ssm" {
     name   = "vpc-endpoint-type"
     values = ["Interface"]
   }
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
 }
 
 data "aws_vpc_endpoint" "existing_ec2messages" {
   count = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? 1 : 0
+  
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.selected.id]
@@ -416,10 +422,15 @@ data "aws_vpc_endpoint" "existing_ec2messages" {
     name   = "vpc-endpoint-type"
     values = ["Interface"]
   }
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
 }
 
 data "aws_vpc_endpoint" "existing_ssmmessages" {
   count = var.create_vpc_endpoints && var.check_for_existing_vpc_endpoints ? 1 : 0
+  
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.selected.id]
@@ -431,6 +442,10 @@ data "aws_vpc_endpoint" "existing_ssmmessages" {
   filter {
     name   = "vpc-endpoint-type"
     values = ["Interface"]
+  }
+  filter {
+    name   = "state"
+    values = ["available"]
   }
 }
 
