@@ -407,8 +407,8 @@ variable "ssm_associations" {
     schedule_expression         = optional(string)
     parameters                  = optional(map(string), {})
     compliance_severity         = optional(string, "UNSPECIFIED")
-    max_concurrency            = optional(string, "1")
-    max_errors                 = optional(string, "0")
+    max_concurrency             = optional(string, "1")
+    max_errors                  = optional(string, "0")
     apply_only_at_cron_interval = optional(bool, false)
   }))
   default = []
@@ -418,4 +418,43 @@ variable "enable_default_host_management" {
   description = "Whether to enable Default Host Management Configuration for EC2 instances"
   type        = bool
   default     = false
+}
+
+# =============================================================================
+# SESSION MANAGER ENHANCED PERMISSIONS
+# =============================================================================
+
+variable "enable_session_manager_permissions" {
+  description = "Whether to add enhanced Session Manager permissions for ssmmessages and S3 access"
+  type        = bool
+  default     = true
+}
+
+# =============================================================================
+# KEY PAIR CREATION FOR WINDOWS INSTANCES
+# =============================================================================
+
+variable "create_key_pair" {
+  description = "Whether to create a new key pair for the instance (required for Windows password retrieval)"
+  type        = bool
+  default     = false
+}
+
+variable "key_pair_name" {
+  description = "Name for the created key pair. If not provided, will use instance_name-key"
+  type        = string
+  default     = null
+}
+
+variable "public_key" {
+  description = "Public key material to use for key pair creation. If not provided, a key pair will be generated"
+  type        = string
+  default     = null
+  sensitive   = false
+}
+
+variable "save_private_key" {
+  description = "Whether to save the generated private key to SSM Parameter Store (only when generating key pair)"
+  type        = bool
+  default     = true
 }

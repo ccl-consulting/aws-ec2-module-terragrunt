@@ -556,6 +556,50 @@ resource "aws_iam_role_policy_attachment" "session_manager_logging" {
   policy_arn = aws_iam_policy.session_manager_logging[0].arn
 }
 
+# Enhanced Session Manager permissions policy
+resource "aws_iam_policy" "session_manager_enhanced" {
+  count       = var.enable_session_manager_permissions ? 1 : 0
+  name        = "${var.iam_role_name}-session-manager-enhanced"
+  path        = "/"
+  description = "Enhanced Session Manager permissions for ssmmessages and S3 access"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetEncryptionConfiguration"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = merge(
+    {
+      Name = "${var.iam_role_name}-session-manager-enhanced"
+    },
+    var.tags
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "session_manager_enhanced" {
+  count      = var.enable_session_manager_permissions ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = aws_iam_policy.session_manager_enhanced[0].arn
+}
+
 
 
 # =============================================================================
@@ -971,5 +1015,46 @@ resource "aws_ssm_association" "configure_agent" {
   }
 
   depends_on = [aws_instance.this, aws_ssm_association.install_agent]
+}
+
+# =============================================================================
+# KEY PAIR CREATION FOR WINDOWS INSTANCES
+# =============================================================================
+
+# Generate a private key if key pair creation is requested and no public key provided
+resource "tls_private_key" "this" {
+  count     = var.create_key_pair && var.public_key == null ? 1 : 0
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+# Create the key pair
+resource "aws_key_pair" "this" {
+  count      = var.create_key_pair ? 1 : 0
+  key_name   = var.key_pair_name != null ? var.key_pair_name : "${var.instance_name}-key"
+  public_key = var.public_key != null ? var.public_key : tls_private_key.this[0].public_key_openssh
+
+  tags = merge(
+    {
+      Name = var.key_pair_name != null ? var.key_pair_name : "${var.instance_name}-key"
+    },
+    var.tags
+  )
+}
+
+# Store the private key in SSM Parameter Store if key generation was requested
+resource "aws_ssm_parameter" "private_key" {
+  count       = var.create_key_pair && var.public_key == null && var.save_private_key ? 1 : 0
+  name        = "/ec2/keypair/${aws_key_pair.this[0].key_name}/private_key"
+  type        = "SecureString"
+  value       = tls_private_key.this[0].private_key_pem
+  description = "Private key for EC2 key pair ${aws_key_pair.this[0].key_name}"
+
+  tags = merge(
+    {
+      Name = "${aws_key_pair.this[0].key_name}-private-key"
+    },
+    var.tags
+  )
 }
 

@@ -283,7 +283,7 @@ output "fleet_manager_policy_arn" {
 
 output "session_manager_logging_policy_arn" {
   description = "ARN of the Session Manager logging IAM policy (if configured)"
-  value = var.enable_session_manager && (var.session_manager_s3_bucket != null || var.session_manager_cloudwatch_log_group != null) ? try(aws_iam_policy.session_manager_logging[0].arn, null) : null
+  value       = var.enable_session_manager && (var.session_manager_s3_bucket != null || var.session_manager_cloudwatch_log_group != null) ? try(aws_iam_policy.session_manager_logging[0].arn, null) : null
 }
 
 # =============================================================================
