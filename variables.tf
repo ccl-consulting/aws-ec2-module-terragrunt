@@ -498,3 +498,12 @@ variable "s3_vpc_endpoint_route_table_ids" {
   type        = list(string)
   default     = null
 }
+
+# =============================================================================
+# ADDITIONAL IAM POLICIES
+# =============================================================================
+variable "enable_s3_access" {
+  description = "Whether to enable S3 access for the instance"
+  type        = bool
+  default     = false
+}
