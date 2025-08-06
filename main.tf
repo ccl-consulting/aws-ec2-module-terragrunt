@@ -133,9 +133,9 @@ locals {
   # User data script to ensure SSM agent is installed and running
   user_data_with_ssm = var.user_data != null ? var.user_data : (
     var.operating_system == "linux" ? base64encode(templatefile("${path.module}/user_data/linux_ssm.sh", {
-      region = data.aws_region.current.name
+      region = data.aws_region.current.region
       })) : base64encode(templatefile("${path.module}/user_data/windows_ssm.ps1", {
-      region = data.aws_region.current.name
+      region = data.aws_region.current.region
     }))
   )
 }
@@ -535,7 +535,7 @@ resource "aws_iam_policy" "session_manager_logging" {
             "logs:DescribeLogStreams"
           ]
           Resource = [
-            "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:${var.session_manager_cloudwatch_log_group}:*"
+            "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${var.session_manager_cloudwatch_log_group}:*"
           ]
         }
       ] : []
@@ -684,7 +684,7 @@ data "aws_vpc_endpoint" "existing_ssm" {
   }
   filter {
     name   = "service-name"
-    values = ["com.amazonaws.${data.aws_region.current.name}.ssm"]
+    values = ["com.amazonaws.${data.aws_region.current.region}.ssm"]
   }
   filter {
     name   = "vpc-endpoint-type"
@@ -702,7 +702,7 @@ data "aws_vpc_endpoint" "existing_ec2messages" {
   }
   filter {
     name   = "service-name"
-    values = ["com.amazonaws.${data.aws_region.current.name}.ec2messages"]
+    values = ["com.amazonaws.${data.aws_region.current.region}.ec2messages"]
   }
   filter {
     name   = "vpc-endpoint-type"
@@ -720,7 +720,7 @@ data "aws_vpc_endpoint" "existing_ssmmessages" {
   }
   filter {
     name   = "service-name"
-    values = ["com.amazonaws.${data.aws_region.current.name}.ssmmessages"]
+    values = ["com.amazonaws.${data.aws_region.current.region}.ssmmessages"]
   }
   filter {
     name   = "vpc-endpoint-type"
@@ -861,7 +861,7 @@ resource "aws_security_group" "vpc_endpoint" {
 resource "aws_vpc_endpoint" "s3" {
   count             = var.create_s3_vpc_endpoint ? 1 : 0
   vpc_id            = data.aws_vpc.selected.id
-  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = var.s3_vpc_endpoint_route_table_ids
 
@@ -877,7 +877,7 @@ resource "aws_vpc_endpoint" "s3" {
 resource "aws_vpc_endpoint" "kms" {
   count               = var.create_kms_vpc_endpoint ? 1 : 0
   vpc_id              = data.aws_vpc.selected.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.kms"
+  service_name        = "com.amazonaws.${data.aws_region.current.region}.kms"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
   security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
@@ -897,7 +897,7 @@ resource "aws_vpc_endpoint" "kms" {
 resource "aws_vpc_endpoint" "logs" {
   count               = var.create_logs_vpc_endpoint ? 1 : 0
   vpc_id              = data.aws_vpc.selected.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.logs"
+  service_name        = "com.amazonaws.${data.aws_region.current.region}.logs"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
   security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
@@ -917,7 +917,7 @@ resource "aws_vpc_endpoint" "logs" {
 resource "aws_vpc_endpoint" "monitoring" {
   count               = var.create_monitoring_vpc_endpoint ? 1 : 0
   vpc_id              = data.aws_vpc.selected.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.monitoring"
+  service_name        = "com.amazonaws.${data.aws_region.current.region}.monitoring"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
   security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
