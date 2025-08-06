@@ -307,6 +307,12 @@ resource "aws_iam_role_policy_attachment" "ec2_role_for_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess"
 }
 
+resource "aws_iam_role_policy_attachment" "s3_access" {
+  count      = var.enable_s3_access ? 1 : 0
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+
 resource "aws_iam_instance_profile" "ssm_profile" {
   name = "${var.iam_role_name}-profile"
   role = aws_iam_role.ssm_role.name
