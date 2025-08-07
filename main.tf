@@ -196,6 +196,56 @@ resource "aws_kms_alias" "ebs" {
   target_key_id = aws_kms_key.ebs[0].key_id
 }
 
+resource "aws_kms_key" "cloudwatch" {
+  count                   = var.enable_cloudwatch_agent ? 1 : 0
+  description             = "KMS key for CloudWatch Agent - ${var.instance_name}"
+  deletion_window_in_days = var.kms_key_deletion_window
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:root"
+        },
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow SSM Parameter Store"
+        Effect = "Allow"
+        Principal = {
+          Service = "ssm.amazonaws.com"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey*",
+          "kms:CreateGrant",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = merge(
+    {
+      Name = "${var.instance_name}-parameter-store-key"
+    },
+    var.tags
+  )
+}
+
+resource "aws_kms_alias" "cloudwatch" {
+  count         = var.enable_cloudwatch_agent ? 1 : 0
+  name          = "alias/${var.instance_name}-parameter-store-key"
+  target_key_id = aws_kms_key.cloudwatch[0].key_id
+}
+
+
 # =============================================================================
 # EC2 INSTANCE
 # =============================================================================
@@ -950,7 +1000,7 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config_linux" {
   count  = var.enable_cloudwatch_agent && var.operating_system == "linux" ? 1 : 0
   name   = "/AmazonCloudWatch/${var.instance_name}/linux/config"
   type   = "SecureString"
-  key_id = "alias/parameter_store_key"
+  key_id = "alias/${var.instance_name}-parameter-store-key"
   value = jsonencode({
     agent = {
       metrics_collection_interval = 60
@@ -1026,7 +1076,7 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config_windows" {
   count  = var.enable_cloudwatch_agent && var.operating_system == "windows" ? 1 : 0
   name   = "/AmazonCloudWatch/${var.instance_name}/windows/config"
   type   = "SecureString"
-  key_id = "alias/parameter_store_key"
+  key_id = "alias/${var.instance_name}-parameter-store-key"
   value = jsonencode({
     agent = {
       metrics_collection_interval = 60
