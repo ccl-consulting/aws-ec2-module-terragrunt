@@ -139,6 +139,8 @@ locals {
       region = data.aws_region.current.region
       })) : base64encode(templatefile("${path.module}/user_data/windows_ssm.ps1", {
       region = data.aws_region.current.region
+      s3Domain  = contains(["cn-north-1", "cn-northwest-1"], data.aws_region.current.region) ? "amazonaws.com.cn" : "amazonaws.com"
+      ssmDomain = contains(["cn-north-1", "cn-northwest-1"], data.aws_region.current.region) ? "amazonaws.com.cn" : "amazonaws.com"
     }))
   )
 }

@@ -5,14 +5,6 @@ $region = "${region}"
 $LogFile = "C:\\ssm-debug.log"
 "[$(Get-Date)] Starting SSM install in $region" | Out-File $LogFile
 
-$s3Domain = "amazonaws.com"
-$ssmDomain = "amazonaws.com"
-# Determine if the region is in China and adjust the S3 domain accordingly
-if ($region -like "cn-*") {
-    $s3Domain = "amazonaws.com.cn"
-    $ssmDomain = "amazonaws.com.cn"
-}
-
 try {
   $url = "https://s3.${region}.${s3Domain}/amazon-ssm-${region}/latest/windows_amd64/AmazonSSMAgentSetup.exe"
   $out = "C:\\AmazonSSMAgentSetup.exe"
