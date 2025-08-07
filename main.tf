@@ -6,6 +6,9 @@ terraform {
 # DATA SOURCES
 # =============================================================================
 
+# Needed for Chine partition (i.e. :aws-cn:)
+data "aws_partition" "current" {}
+
 # Linux AMI data source
 data "aws_ami" "linux" {
   count       = var.operating_system == "linux" && var.custom_ami_id == null ? 1 : 0
@@ -157,7 +160,7 @@ resource "aws_kms_key" "ebs" {
         Sid    = "Enable IAM User Permissions"
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+          AWS = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:root"
         }
         Action   = "kms:*"
         Resource = "*"
@@ -291,26 +294,26 @@ resource "aws_iam_role" "ssm_role" {
 
 resource "aws_iam_role_policy_attachment" "ssm_core" {
   role       = aws_iam_role.ssm_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_iam_role_policy_attachment" "cloudwatch_agent" {
   count      = var.enable_cloudwatch_agent ? 1 : 0
   role       = aws_iam_role.ssm_role.name
-  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 
 # Additional policy for Windows instances
 resource "aws_iam_role_policy_attachment" "ec2_role_for_ssm" {
   count      = var.operating_system == "windows" ? 1 : 0
   role       = aws_iam_role.ssm_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonSSMDirectoryServiceAccess"
 }
 
 resource "aws_iam_role_policy_attachment" "s3_access" {
   count      = var.enable_s3_access ? 1 : 0
   role       = aws_iam_role.ssm_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonS3FullAccess"
 }
 
 resource "aws_iam_instance_profile" "ssm_profile" {
@@ -376,11 +379,11 @@ resource "aws_iam_policy" "fleet_manager_admin" {
           "ssm:StartSession"
         ]
         Resource = [
-          "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
-          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:managed-instance/*",
-          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:document/SSM-SessionManagerRunShell",
-          "arn:aws:ssm:*:*:document/AWS-PasswordReset",
-          "arn:aws:ssm:*:*:document/AWSFleetManager-*"
+          "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
+          "arn:${data.aws_partition.current.partition}:ssm:*:${data.aws_caller_identity.current.account_id}:managed-instance/*",
+          "arn:${data.aws_partition.current.partition}:ssm:*:${data.aws_caller_identity.current.account_id}:document/SSM-SessionManagerRunShell",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWS-PasswordReset",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWSFleetManager-*"
         ]
       },
       {
@@ -456,18 +459,18 @@ resource "aws_iam_policy" "fleet_manager_readonly" {
           "ssm:StartSession"
         ]
         Resource = [
-          "arn:aws:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
-          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:managed-instance/*",
-          "arn:aws:ssm:*:${data.aws_caller_identity.current.account_id}:document/SSM-SessionManagerRunShell",
-          "arn:aws:ssm:*:*:document/AWSFleetManager-GetDiskInformation",
-          "arn:aws:ssm:*:*:document/AWSFleetManager-GetFileContent",
-          "arn:aws:ssm:*:*:document/AWSFleetManager-GetFileSystemContent",
-          "arn:aws:ssm:*:*:document/AWSFleetManager-GetGroups",
-          "arn:aws:ssm:*:*:document/AWSFleetManager-GetPerformanceCounters",
-          "arn:aws:ssm:*:*:document/AWSFleetManager-GetProcessDetails",
-          "arn:aws:ssm:*:*:document/AWSFleetManager-GetUsers",
-          "arn:aws:ssm:*:*:document/AWSFleetManager-GetWindowsEvents",
-          "arn:aws:ssm:*:*:document/AWSFleetManager-GetWindowsRegistryContent"
+          "arn:${data.aws_partition.current.partition}:ec2:*:${data.aws_caller_identity.current.account_id}:instance/*",
+          "arn:${data.aws_partition.current.partition}:ssm:*:${data.aws_caller_identity.current.account_id}:managed-instance/*",
+          "arn:${data.aws_partition.current.partition}:ssm:*:${data.aws_caller_identity.current.account_id}:document/SSM-SessionManagerRunShell",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWSFleetManager-GetDiskInformation",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWSFleetManager-GetFileContent",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWSFleetManager-GetFileSystemContent",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWSFleetManager-GetGroups",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWSFleetManager-GetPerformanceCounters",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWSFleetManager-GetProcessDetails",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWSFleetManager-GetUsers",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWSFleetManager-GetWindowsEvents",
+          "arn:${data.aws_partition.current.partition}:ssm:*:*:document/AWSFleetManager-GetWindowsRegistryContent"
         ]
       },
       {
@@ -527,7 +530,7 @@ resource "aws_iam_policy" "session_manager_logging" {
             "s3:GetEncryptionConfiguration"
           ]
           Resource = [
-            "arn:aws:s3:::${var.session_manager_s3_bucket}/*"
+            "arn:${data.aws_partition.current.partition}:s3:::${var.session_manager_s3_bucket}/*"
           ]
         }
       ] : [],
@@ -541,7 +544,7 @@ resource "aws_iam_policy" "session_manager_logging" {
             "logs:DescribeLogStreams"
           ]
           Resource = [
-            "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${var.session_manager_cloudwatch_log_group}:*"
+            "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${var.session_manager_cloudwatch_log_group}:*"
           ]
         }
       ] : []
