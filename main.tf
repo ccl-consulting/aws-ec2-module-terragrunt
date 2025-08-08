@@ -138,7 +138,9 @@ locals {
     var.operating_system == "linux" ? base64encode(templatefile("${path.module}/user_data/linux_ssm.sh", {
       region = data.aws_region.current.region
       })) : base64encode(templatefile("${path.module}/user_data/windows_ssm.ps1", {
-      region = data.aws_region.current.region
+      region    = data.aws_region.current.region
+      s3Domain  = contains(["cn-north-1", "cn-northwest-1"], data.aws_region.current.region) ? "amazonaws.com.cn" : "amazonaws.com"
+      ssmDomain = contains(["cn-north-1", "cn-northwest-1"], data.aws_region.current.region) ? "amazonaws.com.cn" : "amazonaws.com"
     }))
   )
 }
@@ -815,11 +817,12 @@ resource "aws_vpc_endpoint" "ssm" {
   count = var.create_vpc_endpoints && (
     var.check_for_existing_vpc_endpoints ? !local.existing_ssm_endpoint_exists : true
   ) ? 1 : 0
-  vpc_id             = data.aws_vpc.selected.id
-  service_name       = data.aws_vpc_endpoint_service.ssm[0].service_name
-  vpc_endpoint_type  = "Interface"
-  subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
-  security_group_ids = [aws_security_group.vpc_endpoint[0].id]
+  vpc_id              = data.aws_vpc.selected.id
+  service_name        = data.aws_vpc_endpoint_service.ssm[0].service_name
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = var.enable_private_dns
+  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
 
   tags = merge(
     {
@@ -834,11 +837,12 @@ resource "aws_vpc_endpoint" "ec2messages" {
   count = var.create_vpc_endpoints && (
     var.check_for_existing_vpc_endpoints ? !local.existing_ec2messages_endpoint_exists : true
   ) ? 1 : 0
-  vpc_id             = data.aws_vpc.selected.id
-  service_name       = data.aws_vpc_endpoint_service.ec2messages[0].service_name
-  vpc_endpoint_type  = "Interface"
-  subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
-  security_group_ids = [aws_security_group.vpc_endpoint[0].id]
+  vpc_id              = data.aws_vpc.selected.id
+  service_name        = data.aws_vpc_endpoint_service.ec2messages[0].service_name
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = var.enable_private_dns
+  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
 
   tags = merge(
     {
@@ -853,11 +857,12 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   count = var.create_vpc_endpoints && (
     var.check_for_existing_vpc_endpoints ? !local.existing_ssmmessages_endpoint_exists : true
   ) ? 1 : 0
-  vpc_id             = data.aws_vpc.selected.id
-  service_name       = data.aws_vpc_endpoint_service.ssmmessages[0].service_name
-  vpc_endpoint_type  = "Interface"
-  subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
-  security_group_ids = [aws_security_group.vpc_endpoint[0].id]
+  vpc_id              = data.aws_vpc.selected.id
+  service_name        = data.aws_vpc_endpoint_service.ssmmessages[0].service_name
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = var.enable_private_dns
+  subnet_ids          = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
+  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
 
   tags = merge(
     {
