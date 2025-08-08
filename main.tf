@@ -820,6 +820,7 @@ resource "aws_vpc_endpoint" "ssm" {
   vpc_id             = data.aws_vpc.selected.id
   service_name       = data.aws_vpc_endpoint_service.ssm[0].service_name
   vpc_endpoint_type  = "Interface"
+  private_dns_enabled = var.enable_private_dns
   subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
   security_group_ids = [aws_security_group.vpc_endpoint[0].id]
 
@@ -839,6 +840,7 @@ resource "aws_vpc_endpoint" "ec2messages" {
   vpc_id             = data.aws_vpc.selected.id
   service_name       = data.aws_vpc_endpoint_service.ec2messages[0].service_name
   vpc_endpoint_type  = "Interface"
+  private_dns_enabled = var.enable_private_dns
   subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
   security_group_ids = [aws_security_group.vpc_endpoint[0].id]
 
@@ -858,6 +860,7 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   vpc_id             = data.aws_vpc.selected.id
   service_name       = data.aws_vpc_endpoint_service.ssmmessages[0].service_name
   vpc_endpoint_type  = "Interface"
+  private_dns_enabled = var.enable_private_dns
   subnet_ids         = var.vpc_endpoint_subnet_ids != null ? var.vpc_endpoint_subnet_ids : [local.subnet_id]
   security_group_ids = [aws_security_group.vpc_endpoint[0].id]
 

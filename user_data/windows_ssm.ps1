@@ -2,6 +2,8 @@
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $region = "${region}"
+$s3Domain = "${s3Domain}"
+$ssmDomain = "${ssmDomain}"
 $LogFile = "C:\\ssm-debug.log"
 "[$(Get-Date)] Starting SSM install in $region" | Out-File $LogFile
 
