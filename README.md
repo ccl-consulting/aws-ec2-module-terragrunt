@@ -1,3 +1,7 @@
+> [!WARNING]
+> **Deprecated project in favor of [terraform-aws-ec2-instance](https://github.com/terraform-aws-modules/terraform-aws-ec2-instance)**
+
+
 # AWS EC2 Module
 
 [![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.0-623CE4?logo=terraform6logoColor=white)](https://www.terraform.io/)
